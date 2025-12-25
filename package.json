@@ -1,25 +1,51 @@
 {
   "name": "pro-dev-qc-tool",
   "version": "1.0.0",
-  "description": "",
+  "author": "Anh Bui",
+  "description": "Professional Sass Compiler and QC Tool",
   "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-packager . --overwrite --platform=darwin --arch=arm64 --prune=true --out=release-builds",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "electron-builder"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@supabase/supabase-js": "^2.89.0",
-    "chokidar": "^5.0.0",
-    "electron": "^39.2.7",
-    "fabric": "^7.0.0",
-    "sass": "^1.97.1",
-    "ws": "^8.18.3"
+  "build": {
+    "appId": "com.anhbui.devqctool",
+    "productName": "DevQCPro",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dmg", "zip"],
+      "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "format": "UDZO",
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "contents": [
+        { "x": 410, "y": 180, "type": "link", "path": "/Applications" },
+        { "x": 130, "y": 180, "type": "file" }
+      ]
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asar": true
   },
   "devDependencies": {
-    "electron-packager": "^17.1.2"
+    "electron": "^latest",
+    "electron-builder": "^latest"
+  },
+  "dependencies": {
+    "sass": "^1.x",
+    "chokidar": "^3.x",
+    "ws": "^8.x"
   }
 }
