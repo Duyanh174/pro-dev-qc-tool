@@ -1,0 +1,25 @@
+{
+  "name": "pro-dev-qc-tool",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-packager . --overwrite --platform=darwin --arch=arm64 --prune=true --out=release-builds",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.89.0",
+    "chokidar": "^5.0.0",
+    "electron": "^39.2.7",
+    "fabric": "^7.0.0",
+    "sass": "^1.97.1",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "electron-packager": "^17.1.2"
+  }
+}

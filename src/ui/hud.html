@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { margin: 0; padding: 10px; font-family: 'SF Mono', monospace; overflow: hidden; -webkit-app-region: drag; /* Cho phép cầm bảng này kéo đi khắp màn hình */ }
+        .hud-container {
+            background: rgba(46, 52, 64, 0.95);
+            color: #eceff4;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 6px solid #bf616a;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; color: #bf616a; font-weight: bold; font-size: 14px; }
+        .message { font-size: 12px; line-height: 1.5; color: #d8dee9; word-break: break-all; }
+        .hint { margin-top: 10px; font-size: 10px; color: #4c566a; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="hud-container">
+        <div class="header">🔥 SASS ERROR DETECTED</div>
+        <div id="msg" class="message"></div>
+        <div class="hint">Bảng này sẽ tự biến mất khi bạn fix xong lỗi.</div>
+    </div>
+    <script>
+        const { ipcRenderer } = require('electron');
+        ipcRenderer.on('update-error', (event, msg) => {
+            document.getElementById('msg').innerText = msg;
+        });
+    </script>
+</body>
+</html>

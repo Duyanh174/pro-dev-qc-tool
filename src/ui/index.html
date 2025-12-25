@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Pro Dev-QC Tool</title>
+    <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar-nav">
+            <div class="nav-item active" id="nav-compiler" onclick="showTab('compiler')">✨</div>
+            <div class="nav-item" id="nav-settings" onclick="showTab('settings')">⚙️</div>
+        </nav>
+    
+        <main class="main-content">
+            <div id="tab-compiler" class="tab-content">
+                <header class="main-header">
+                    <h1>Sass Engine</h1>
+                    <div class="status-badge">
+                        <div id="status-dot" class="status-dot" style="background: var(--text-dim);"></div>
+                        <span id="status">Ready</span>
+                    </div>
+                </header>
+    
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                        <div class="tab-switcher">
+                            <button id="modeSame" class="tab-btn active" onclick="setMode('same')">At Place</button>
+                            <button id="modeCustom" class="tab-btn" onclick="setMode('custom')">Custom Path</button>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="btnStop" class="action-btn" style="display:none; background: rgba(239, 68, 68, 0.1); color: var(--error); border: 1px solid var(--error); box-shadow: none;">Stop Engine</button>
+                            <button id="btnResume" class="action-btn" style="display:none; background: var(--success); color: white;">Resume Engine</button>
+                        </div>
+                    </div>
+    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <span style="font-size: 11px; color: var(--text-dim); font-weight: 600; display: block; margin-bottom: 8px;">SOURCE FOLDER</span>
+                            <button class="action-btn" style="width:100%" id="btnIn">📂 Select SCSS Directory</button>
+                            <div id="txtIn" style="font-size:11px; color: var(--text-dim); margin-top:12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Waiting for input...</div>
+                        </div>
+                        <div id="outputCard" style="visibility: hidden;">
+                            <span style="font-size: 11px; color: var(--text-dim); font-weight: 600; display: block; margin-bottom: 8px;">TARGET FOLDER</span>
+                            <button class="action-btn" style="width:100%; background: #475569; box-shadow: none;" id="btnOut">📂 Set Destination</button>
+                            <div id="txtOut" style="font-size:11px; color: var(--text-dim); margin-top:12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Same as source</div>
+                        </div>
+                    </div>
+                </div>
+    
+                <div class="log-container">
+                    <div class="log-header">
+                        <span style="font-size: 12px; font-weight: 700; color: var(--text-dim);">LIVE LOG ACTIVITY</span>
+                        <span onclick="clearLogs()" style="cursor:pointer; font-size: 11px; color: var(--accent); font-weight: 600;">CLEAR ALL</span>
+                    </div>
+                    <div id="logs"></div>
+                </div>
+            </div>
+    
+            <div id="tab-settings" class="tab-content" style="display:none">
+                <header class="main-header">
+                    <h1>System Settings</h1>
+                </header>
+            
+                <div class="module-selector-nav">
+                    <button class="mod-btn active" onclick="showModuleSettings('convert', event)">Compiler</button>
+                    <button class="mod-btn" onclick="showModuleSettings('overlay', event)">Overlay</button>
+                    <button class="mod-btn" onclick="showModuleSettings('ruler', event)">Ruler</button>
+                </div>
+            
+                <div class="module-settings-container">
+                    <div id="mod-settings-convert" class="mod-settings-panel">
+                        <div class="card" style="max-width: 600px;">
+                            <h3 style="font-size: 14px; margin-top: 0; margin-bottom: 25px; color: #fff;">Notification Control</h3>
+                            
+                            <div class="switch-container">
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 600;">Desktop Notifications</div>
+                                    <div style="font-size: 12px; color: var(--text-dim);">Show popup error on macOS/Windows</div>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-native" checked onchange="saveCfg()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+            
+                            <div class="switch-container">
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 600;">Browser Error HUD</div>
+                                    <div style="font-size: 12px; color: var(--text-dim);">Push error overlay to Chrome Extension</div>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-web" checked onchange="saveCfg()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <div id="mod-settings-overlay" class="mod-settings-panel" style="display:none">
+                        <div class="card">
+                            <p style="color:var(--text-dim); font-size:13px; text-align:center; padding: 40px;">Ghost Overlay settings coming soon...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../renderer/renderer.js"></script>
+</body>
+</html>
