@@ -4,6 +4,9 @@ const chokidar = require('chokidar');
 const path = require('path');
 const fs = require('fs');
 const WebSocket = require('ws');
+// THÊM 2 THƯ VIỆN MỚI
+const postcss = require('postcss');
+const autoprefixer = require('autoprefixer');
 
 const MAX_LOGS = 50;
 
@@ -12,7 +15,7 @@ const App = {
     activeProjectId: null,
     watchers: new Map(),
     wss: null,
-    config: { native: true, web: true },
+    config: { native: true, web: true, autoprefixer: true }, // MẶC ĐỊNH BẬT AUTOPREFIXER
 
     init() {
         const savedCfg = localStorage.getItem('dev_suite_cfg');
@@ -22,7 +25,6 @@ const App = {
         const savedProjects = localStorage.getItem('dev_projects');
         if (savedProjects) {
             this.projects = JSON.parse(savedProjects);
-            // Kích hoạt watching SONG SONG cho tất cả dự án có folder hợp lệ
             this.projects.forEach(p => {
                 if (p.inputDir && fs.existsSync(p.inputDir)) {
                     Watcher.start(p.id);
@@ -46,8 +48,11 @@ const App = {
     syncUIConfig() {
         const nativeCb = document.getElementById('cfg-native');
         const webCb = document.getElementById('cfg-web');
+        const autoPrefixCb = document.getElementById('cfg-autoprefixer'); // ID MỚI
+        
         if(nativeCb) nativeCb.checked = this.config.native;
         if(webCb) webCb.checked = this.config.web;
+        if(autoPrefixCb) autoPrefixCb.checked = this.config.autoprefixer; // SYNC TRẠNG THÁI
     },
 
     startSocket() {
@@ -77,22 +82,16 @@ const App = {
         UI.log(newId, `Dự án "${finalName}" đã sẵn sàng.`, 'warn');
     },
 
-    // TÍNH NĂNG XÓA DỰ ÁN
     deleteProject(id, event) {
-        event.stopPropagation(); // Ngăn chặn sự kiện click chọn dự án
-        
+        event.stopPropagation();
         const project = this.projects.find(p => p.id === id);
         if (!project) return;
 
         if (confirm(`Bạn có chắc chắn muốn xóa dự án "${project.name}"?`)) {
-            // 1. Dừng watcher nếu đang chạy
             Watcher.stop(id);
-            
-            // 2. Xóa khỏi danh sách
             this.projects = this.projects.filter(p => p.id !== id);
             this.save();
             
-            // 3. Xử lý UI sau khi xóa
             if (this.activeProjectId === id) {
                 if (this.projects.length > 0) {
                     this.switchProject(this.projects[0].id);
@@ -147,9 +146,18 @@ const Compiler = {
         try {
             const target = this.getOutPath(file, project);
             const result = await sass.compileAsync(file, { style: 'expanded', sourceMap: true });
-            fs.writeFileSync(target, result.css);
             
-            UI.log(projectId, `Biên dịch thành công: ${path.basename(target)}`, 'success');
+            let finalCss = result.css;
+
+            // LOGIC AUTOPREFIXER MỚI
+            if (App.config.autoprefixer) {
+                const processed = await postcss([autoprefixer]).process(finalCss, { from: undefined });
+                finalCss = processed.css;
+            }
+
+            fs.writeFileSync(target, finalCss);
+            
+            UI.log(projectId, `Biên dịch thành công ${App.config.autoprefixer ? '(+Prefix)' : ''}: ${path.basename(target)}`, 'success');
             if (App.config.web) this.broadcast({ type: 'clear' });
         } catch (e) {
             this.handleError(projectId, file, e);
@@ -285,7 +293,6 @@ const UI = {
             const item = document.createElement('div');
             item.className = `project-item ${App.activeProjectId === p.id ? 'active' : ''}`;
             
-            // Thêm nút xóa (x) vào bên phải
             item.innerHTML = `
                 <div class="avatar">${p.name.substring(0, 2).toUpperCase()}</div>
                 <div class="name-box">
@@ -329,18 +336,8 @@ const UI = {
     showProjectModal: () => {
         const modal = document.getElementById('project-modal');
         const input = document.getElementById('new-project-name');
-        const warning = document.getElementById('ram-warning');
-        
         modal.style.display = 'flex';
         input.value = `Project ${App.projects.length + 1}`;
-        
-        // CẢNH BÁO RAM NẾU DỰ ÁN >= 4
-        if (App.projects.length >= 4) {
-            warning.style.display = 'block';
-        } else {
-            warning.style.display = 'none';
-        }
-
         input.focus();
         input.select();
     },
@@ -367,6 +364,13 @@ window.showTab = (id) => {
     document.getElementById(`tab-${id}`).style.display = 'flex';
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     document.getElementById(`nav-${id}`).classList.add('active');
+};
+
+window.showModuleSettings = (id, event) => {
+    document.querySelectorAll('.mod-settings-panel').forEach(p => p.style.display = 'none');
+    document.getElementById(`mod-settings-${id}`).style.display = 'block';
+    document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
+    event.currentTarget.classList.add('active');
 };
 
 document.getElementById('btnIn').addEventListener('click', async () => {
@@ -410,6 +414,7 @@ document.getElementById('confirm-project-btn').addEventListener('click', () => {
 
 document.getElementById('btnStop').addEventListener('click', () => Watcher.stop(App.activeProjectId));
 document.getElementById('btnResume').addEventListener('click', () => Watcher.start(App.activeProjectId));
+
 window.clearLogs = () => {
     const project = App.getActiveProject();
     if (project) {
@@ -418,9 +423,11 @@ window.clearLogs = () => {
         UI.renderLogs([]);
     }
 };
+
 window.saveCfg = () => {
     App.config.native = document.getElementById('cfg-native').checked;
     App.config.web = document.getElementById('cfg-web').checked;
+    App.config.autoprefixer = document.getElementById('cfg-autoprefixer').checked; // LƯU CẤU HÌNH AUTOPREFIXER
     localStorage.setItem('dev_suite_cfg', JSON.stringify(App.config));
 };
 

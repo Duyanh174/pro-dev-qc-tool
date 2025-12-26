@@ -96,6 +96,16 @@
                             <h3 class="card-title">Notification Control</h3>
                             <div class="switch-container">
                                 <div class="switch-info">
+                                    <div class="sw-title">Autoprefixer Integration</div>
+                                    <div class="sw-desc">Automatically add vendor prefixes (-webkit-, -ms-) for better browser support</div>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-autoprefixer" checked onchange="saveCfg()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="switch-container">
+                                <div class="switch-info">
                                     <div class="sw-title">Desktop Notifications</div>
                                     <div class="sw-desc">Show popup error on macOS/Windows</div>
                                 </div>
