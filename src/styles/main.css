@@ -12,6 +12,7 @@
     --success: #10b981;
     --error: #ef4444;
     --warning: #f59e0b;
+    --custom-url: #ff9e85;
     --panel-width: 260px;
     /* Chiều rộng phần Project */
 }
@@ -150,9 +151,15 @@ body {
 
 /* Nút xóa tinh tế */
 .delete-btn {
-    width: 20px; height: 20px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; color: #475569; opacity: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #475569;
+    opacity: 0;
     transition: all 0.2s;
 }
 
@@ -166,7 +173,7 @@ body {
 }
 
 .project-item.active .delete-btn {
-    color: rgba(255,255,255,0.4);
+    color: rgba(255, 255, 255, 0.4);
 }
 
 .add-mini-btn {
@@ -251,7 +258,7 @@ body {
     margin-top: 12px;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    /* white-space: nowrap; */
     font-family: 'JetBrains Mono', monospace;
 }
 
@@ -643,7 +650,8 @@ input:checked+.slider:before {
     display: inline-block;
     width: 50px;
     height: 28px;
-    flex-shrink: 0; /* Đảm bảo nút không bị bóp méo */
+    flex-shrink: 0;
+    /* Đảm bảo nút không bị bóp méo */
 }
 
 .switch input {
@@ -655,8 +663,12 @@ input:checked+.slider:before {
 .slider {
     position: absolute;
     cursor: pointer;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #2d2d3d; /* Màu nền khi tắt (Dark Grey) */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #2d2d3d;
+    /* Màu nền khi tắt (Dark Grey) */
     transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 34px;
 }
@@ -672,24 +684,138 @@ input:checked+.slider:before {
     background-color: white;
     transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 50%;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.3); /* Đổ bóng nhẹ kiểu iOS */
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    /* Đổ bóng nhẹ kiểu iOS */
 }
 
 /* Hiệu ứng khi được bật */
-input:checked + .slider {
-    background-color: var(--success); /* Màu xanh Emerald của bạn */
+input:checked+.slider {
+    background-color: var(--success);
+    /* Màu xanh Emerald của bạn */
 }
 
 /* Di chuyển nút tròn khi bật */
-input:checked + .slider:before {
+input:checked+.slider:before {
     transform: translateX(22px);
 }
 
 /* Hiệu ứng nhấn giữ (Active state) */
 .switch:active .slider:before {
-    width: 28px; /* Nút tròn hơi dài ra một chút khi nhấn (giống iPhone thật) */
+    width: 28px;
+    /* Nút tròn hơi dài ra một chút khi nhấn (giống iPhone thật) */
 }
 
-input:checked:active + .slider:before {
-    transform: translateX(18px); /* Điều chỉnh lại vị trí khi nhấn giữ */
+input:checked:active+.slider:before {
+    transform: translateX(18px);
+    /* Điều chỉnh lại vị trí khi nhấn giữ */
+}
+
+
+/* --- BỔ SUNG VÀO main.css --- */
+
+.clickable-path {
+    font-size: 11px;
+    color: var(--accent);
+    /* margin-left: 72px; */
+    margin-top: 5px;
+    cursor: pointer;
+    opacity: 0.8;
+    text-decoration: underline;
+    font-weight: 600;
+    display: inline-block;
+    padding: 2px 5px;
+    border-radius: 4px;
+    background: rgba(61, 90, 254, 0.05);
+    transition: all 0.2s;
+}
+
+.clickable-path:hover {
+    opacity: 1;
+    background: rgba(61, 90, 254, 0.15);
+    transform: translateX(3px);
+}
+
+/* Thêm vào phần log-entry để mượt hơn */
+.log-entry {
+    flex-direction: column;
+    /* Cho phép dòng clickable-path nằm dưới dòng log chính */
+    padding: 10px 15px !important;
+}
+
+/* --- BỔ SUNG VÀO main.css --- */
+
+/* Hàng Log chính */
+.log-main-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+/* Label (đã fix) */
+.fixed-label {
+    font-size: 10px;
+    color: var(--success);
+    font-style: italic;
+    margin-left: 8px;
+    font-weight: 700;
+}
+
+/* Hiệu ứng khi lỗi đã được fix */
+.log-entry.is-fixed {
+    opacity: 0.4;
+    filter: grayscale(0.5);
+    background: transparent !important;
+}
+
+.log-entry.is-fixed .clickable-path {
+    display: none;
+    /* Ẩn link khi đã fix để đỡ rối */
+}
+
+/* Vùng chứa hành động lỗi */
+.error-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 72px;
+    margin-top: 5px;
+}
+
+.clickable-path {
+    font-size: 10px;
+    color: var(--custom-url);
+    cursor: pointer;
+    text-decoration: underline;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(61, 90, 254, 0.08);
+    transition: all 0.2s;
+}
+
+.clickable-path:hover {
+    background: rgba(61, 90, 254, 0.2);
+    color: #fff;
+}
+
+/* Nút Trợ giúp (?) */
+.path-help-trigger {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #1e2533;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    cursor: pointer;
+    border: 1px solid var(--border);
+}
+
+.path-help-trigger:hover {
+    background: var(--warning);
+    color: #000;
+    border-color: var(--warning);
 }

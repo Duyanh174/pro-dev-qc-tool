@@ -4,9 +4,9 @@ const chokidar = require('chokidar');
 const path = require('path');
 const fs = require('fs');
 const WebSocket = require('ws');
-// THÊM 2 THƯ VIỆN MỚI
 const postcss = require('postcss');
 const autoprefixer = require('autoprefixer');
+const { exec } = require('child_process');
 
 const MAX_LOGS = 50;
 
@@ -15,7 +15,7 @@ const App = {
     activeProjectId: null,
     watchers: new Map(),
     wss: null,
-    config: { native: true, web: true, autoprefixer: true }, // MẶC ĐỊNH BẬT AUTOPREFIXER
+    config: { native: true, web: true, autoprefixer: true },
 
     init() {
         const savedCfg = localStorage.getItem('dev_suite_cfg');
@@ -48,11 +48,10 @@ const App = {
     syncUIConfig() {
         const nativeCb = document.getElementById('cfg-native');
         const webCb = document.getElementById('cfg-web');
-        const autoPrefixCb = document.getElementById('cfg-autoprefixer'); // ID MỚI
-        
+        const autoPrefixCb = document.getElementById('cfg-autoprefixer');
         if(nativeCb) nativeCb.checked = this.config.native;
         if(webCb) webCb.checked = this.config.web;
-        if(autoPrefixCb) autoPrefixCb.checked = this.config.autoprefixer; // SYNC TRẠNG THÁI
+        if(autoPrefixCb) autoPrefixCb.checked = this.config.autoprefixer;
     },
 
     startSocket() {
@@ -64,7 +63,6 @@ const App = {
     createNewProject(name) {
         const newId = 'pj_' + Date.now();
         const finalName = name.trim() || `Project ${this.projects.length + 1}`;
-        
         const newProject = {
             id: newId,
             name: finalName,
@@ -73,12 +71,10 @@ const App = {
             mode: 'same',
             logs: []
         };
-
         this.projects.push(newProject);
         this.save();
         UI.renderProjectList();
         this.switchProject(newId);
-        
         UI.log(newId, `Dự án "${finalName}" đã sẵn sàng.`, 'warn');
     },
 
@@ -86,18 +82,13 @@ const App = {
         event.stopPropagation();
         const project = this.projects.find(p => p.id === id);
         if (!project) return;
-
         if (confirm(`Bạn có chắc chắn muốn xóa dự án "${project.name}"?`)) {
             Watcher.stop(id);
             this.projects = this.projects.filter(p => p.id !== id);
             this.save();
-            
             if (this.activeProjectId === id) {
-                if (this.projects.length > 0) {
-                    this.switchProject(this.projects[0].id);
-                } else {
-                    this.resetWorkspace();
-                }
+                if (this.projects.length > 0) this.switchProject(this.projects[0].id);
+                else this.resetWorkspace();
             }
             UI.renderProjectList();
         }
@@ -116,19 +107,15 @@ const App = {
         this.activeProjectId = id;
         const project = this.projects.find(p => p.id === id);
         if (!project) return;
-
         document.getElementById('active-project-name').innerText = project.name;
         document.getElementById('active-project-path').innerText = project.inputDir || "No directory selected";
         document.getElementById('txtIn').innerText = project.inputDir || "Waiting for input...";
         document.getElementById('txtOut').innerText = project.outputDir || "Same as source";
-        
         window.setMode(project.mode);
         UI.renderLogs(project.logs);
-        
         const isWatching = this.watchers.has(id);
         UI.updateStatus(isWatching ? 'watching' : 'stopped');
         UI.toggleBtn(isWatching ? 'stop' : 'resume');
-
         UI.renderProjectList();
     },
 
@@ -146,21 +133,33 @@ const Compiler = {
         try {
             const target = this.getOutPath(file, project);
             const result = await sass.compileAsync(file, { style: 'expanded', sourceMap: true });
-            
             let finalCss = result.css;
-
-            // LOGIC AUTOPREFIXER MỚI
             if (App.config.autoprefixer) {
                 const processed = await postcss([autoprefixer]).process(finalCss, { from: undefined });
                 finalCss = processed.css;
             }
-
             fs.writeFileSync(target, finalCss);
             
-            UI.log(projectId, `Biên dịch thành công ${App.config.autoprefixer ? '(+Prefix)' : ''}: ${path.basename(target)}`, 'success');
+            // LOGIC: Đánh dấu lỗi cũ đã được fix
+            this.markErrorAsFixed(project, file);
+
+            UI.log(projectId, `Biên dịch thành công: ${path.basename(target)}`, 'success');
             if (App.config.web) this.broadcast({ type: 'clear' });
         } catch (e) {
             this.handleError(projectId, file, e);
+        }
+    },
+
+    markErrorAsFixed(project, file) {
+        let hasChanges = false;
+        project.logs.forEach(log => {
+            if (log.type === 'error' && log.fullPath === file && !log.isFixed) {
+                log.isFixed = true;
+                hasChanges = true;
+            }
+        });
+        if (hasChanges && App.activeProjectId === project.id) {
+            UI.renderLogs(project.logs);
         }
     },
 
@@ -183,28 +182,33 @@ const Compiler = {
     },
 
     handleError(projectId, file, e) {
-        const line = e.span ? e.span.start.line + 1 : "??";
-        const msg = `${path.basename(file)} (Line ${line}): ${e.message}`;
-        UI.log(projectId, `LỖI SASS: ${msg}`, 'error', file);
+        const line = e.span ? e.span.start.line + 1 : 1;
+        
+        // BƯỚC 1: Loại bỏ mã màu ANSI (như [34m) để không bị mất text hoặc lỗi hiển thị
+        let rawMsg = e.message.replace(/\x1B\[[0-9;]*[mK]/g, '');
+        
+        // BƯỚC 2: Lấy nội dung lỗi chính xác, tránh cắt nhầm
+        // Sass thường để nội dung lỗi trước ký tự '╷'
+        const cleanMsg = rawMsg.split('╷')[0].trim(); 
+        
+        const msg = `${path.basename(file)} (Dòng ${line}): ${cleanMsg}`;
+        
+        UI.log(projectId, msg, 'error', file, line);
         if (App.config.web) this.broadcast({ type: 'error', message: msg });
         if (App.config.native) new Notification("Sass Compile Error", { body: msg });
-    }
+    },
 };
 
 const Watcher = {
     start(projectId) {
         const project = App.projects.find(p => p.id === projectId);
         if (!project || !project.inputDir) return;
-
         if (App.watchers.has(projectId)) App.watchers.get(projectId).close();
-
         const w = chokidar.watch(project.inputDir, {
             ignored: [/(^|[\/\\])\../, '**/node_modules/**', '**/.git/**'],
-            persistent: true,
-            ignoreInitial: true,
+            persistent: true, ignoreInitial: true,
             awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 }
         });
-
         w.on('add', f => Compiler.run(f, projectId))
          .on('change', f => Compiler.run(f, projectId))
          .on('unlink', f => {
@@ -214,21 +218,18 @@ const Watcher = {
                 UI.log(projectId, `Đã gỡ bỏ: ${path.basename(t)}`, 'warn');
             }
          });
-
         App.watchers.set(projectId, w);
         if (App.activeProjectId === projectId) {
             UI.updateStatus('watching');
             UI.toggleBtn('stop');
         }
     },
-
     stop(projectId) {
         if (App.watchers.has(projectId)) {
             App.watchers.get(projectId).close();
             App.watchers.delete(projectId);
             if (App.activeProjectId === projectId) {
-                UI.updateStatus('stopped');
-                UI.toggleBtn('resume');
+                UI.updateStatus('stopped'); UI.toggleBtn('resume');
                 UI.log(projectId, "Đã tạm dừng Engine.", "warn");
             }
         }
@@ -236,47 +237,71 @@ const Watcher = {
 };
 
 const UI = {
-    log: (projectId, m, type = '', fullPath = '') => {
+    log: (projectId, m, type = '', fullPath = '', line = 1) => {
         const project = App.projects.find(p => p.id === projectId);
         if (!project) return;
-
         const logEntry = {
             time: new Date().toLocaleTimeString([], { hour12: false }),
-            msg: m,
-            type: type,
-            fullPath: fullPath
+            msg: m, type: type, fullPath: fullPath, line: line, isFixed: false
         };
-
         project.logs.push(logEntry);
         if (project.logs.length > MAX_LOGS) project.logs.shift();
-
         if (App.activeProjectId === projectId) UI.appendLogToDOM(logEntry);
         App.save();
     },
 
-    logSystem: (m) => {
-        if (App.activeProjectId) UI.log(App.activeProjectId, m, 'warn');
-    },
+    logSystem: (m) => { if (App.activeProjectId) UI.log(App.activeProjectId, m, 'warn'); },
 
     appendLogToDOM: (entry) => {
         const container = document.getElementById('logs');
         if (!container) return;
-
+        
         const typeClass = entry.type === 'success' ? 'log-success' : (entry.type === 'error' ? 'log-error' : 'log-warn');
+        const fixedClass = entry.isFixed ? 'is-fixed' : '';
         const div = document.createElement('div');
-        div.className = `log-entry ${typeClass}`;
+        div.className = `log-entry ${typeClass} ${fixedClass}`;
+        
+        // Phần nội dung log chính
         let html = `
-            <div style="display: flex; gap: 12px;">
+            <div class="log-main-row">
                 <span class="log-time">${entry.time}</span>
-                <span class="log-msg">${entry.msg}</span>
+                <span class="log-msg">
+                    ${entry.msg} 
+                    ${entry.isFixed ? '<span class="fixed-label">ĐÃ FIX</span>' : ''}
+                </span>
             </div>
         `;
+    
+        // Phần đường dẫn VS Code: Cấu trúc lại để dễ căn lề
         if (entry.fullPath && entry.type === 'error') {
-            html += `<div style="font-size: 10px; opacity: 0.6; margin-left: 72px; margin-top: 4px; word-break: break-all;">Source: ${entry.fullPath}</div>`;
+            html += `
+                <div class="error-actions">
+                    <span class="clickable-path" onclick="UI.openInEditor('${entry.fullPath.replace(/\\/g, '/')}', ${entry.line})">
+                        ➜ Mở trong VS Code (Dòng ${entry.line})
+                    </span>
+                    <span class="path-help-trigger" onclick="UI.showPathGuide(event)">?</span>
+                </div>
+            `;
         }
+        
         div.innerHTML = html;
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
+    },
+
+    showPathGuide: (e) => {
+        e.stopPropagation();
+        alert("Để mở file nhanh:\n1. Mở VS Code\n2. Nhấn Cmd/Ctrl + Shift + P\n3. Gõ: 'install code command in PATH'\n4. Chọn dòng đó và nhấn Enter.");
+    },
+
+    openInEditor: (filePath, line) => {
+        if (!filePath) return;
+        const command = `code -g "${filePath}:${line}"`;
+        exec(command, (err) => {
+            if (err) {
+                alert("Không thể mở VS Code. Hãy kiểm tra cài đặt PATH (nhấn dấu ? để xem hướng dẫn).");
+            }
+        });
     },
 
     renderLogs: (logs) => {
@@ -292,7 +317,6 @@ const UI = {
         App.projects.forEach(p => {
             const item = document.createElement('div');
             item.className = `project-item ${App.activeProjectId === p.id ? 'active' : ''}`;
-            
             item.innerHTML = `
                 <div class="avatar">${p.name.substring(0, 2).toUpperCase()}</div>
                 <div class="name-box">
@@ -336,24 +360,21 @@ const UI = {
     showProjectModal: () => {
         const modal = document.getElementById('project-modal');
         const input = document.getElementById('new-project-name');
+        const warning = document.getElementById('ram-warning');
         modal.style.display = 'flex';
+        if (App.projects.length >= 4) warning.style.display = 'block';
+        else warning.style.display = 'none';
         input.value = `Project ${App.projects.length + 1}`;
-        input.focus();
-        input.select();
+        input.focus(); input.select();
     },
 
-    hideProjectModal: () => {
-        document.getElementById('project-modal').style.display = 'none';
-    }
+    hideProjectModal: () => { document.getElementById('project-modal').style.display = 'none'; }
 };
 
 // --- EVENTS ---
 window.setMode = (m) => {
     const project = App.getActiveProject();
-    if (project) {
-        project.mode = m;
-        App.save();
-    }
+    if (project) { project.mode = m; App.save(); }
     document.getElementById('modeSame').classList.toggle('active', m === 'same');
     document.getElementById('modeCustom').classList.toggle('active', m === 'custom');
     document.getElementById('outputCard').style.visibility = (m === 'custom') ? 'visible' : 'hidden';
@@ -374,60 +395,45 @@ window.showModuleSettings = (id, event) => {
 };
 
 document.getElementById('btnIn').addEventListener('click', async () => {
-    if (App.projects.length === 0) {
-        UI.showProjectModal();
-        return;
-    }
+    if (App.projects.length === 0) { UI.showProjectModal(); return; }
     const project = App.getActiveProject();
     if (!project) return;
-
     const res = await ipcRenderer.invoke('select-folder');
     if (!res.canceled) {
         project.inputDir = res.filePaths[0];
         document.getElementById('txtIn').innerText = project.inputDir;
         document.getElementById('active-project-path').innerText = project.inputDir;
-        App.save();
-        UI.renderProjectList();
+        App.save(); UI.renderProjectList();
         UI.log(project.id, "Bắt đầu quét thư mục...", 'warn');
-        UI.initialScan(project.inputDir, project.id);
-        Watcher.start(project.id);
+        UI.initialScan(project.inputDir, project.id); Watcher.start(project.id);
     }
 });
 
 document.getElementById('btnOut').addEventListener('click', async () => {
-    const project = App.getActiveProject();
-    if (!project) return;
+    const project = App.getActiveProject(); if (!project) return;
     const res = await ipcRenderer.invoke('select-folder');
     if (!res.canceled) {
         project.outputDir = res.filePaths[0];
         document.getElementById('txtOut').innerText = project.outputDir;
-        App.save();
-        UI.log(project.id, `Đã đổi folder đích.`, 'success');
+        App.save(); UI.log(project.id, `Đã đổi folder đích.`, 'success');
     }
 });
 
 document.getElementById('confirm-project-btn').addEventListener('click', () => {
     const name = document.getElementById('new-project-name').value;
-    UI.hideProjectModal();
-    App.createNewProject(name);
+    UI.hideProjectModal(); App.createNewProject(name);
 });
 
 document.getElementById('btnStop').addEventListener('click', () => Watcher.stop(App.activeProjectId));
 document.getElementById('btnResume').addEventListener('click', () => Watcher.start(App.activeProjectId));
-
 window.clearLogs = () => {
     const project = App.getActiveProject();
-    if (project) {
-        project.logs = [];
-        App.save();
-        UI.renderLogs([]);
-    }
+    if (project) { project.logs = []; App.save(); UI.renderLogs([]); }
 };
-
 window.saveCfg = () => {
     App.config.native = document.getElementById('cfg-native').checked;
     App.config.web = document.getElementById('cfg-web').checked;
-    App.config.autoprefixer = document.getElementById('cfg-autoprefixer').checked; // LƯU CẤU HÌNH AUTOPREFIXER
+    App.config.autoprefixer = document.getElementById('cfg-autoprefixer').checked;
     localStorage.setItem('dev_suite_cfg', JSON.stringify(App.config));
 };
 

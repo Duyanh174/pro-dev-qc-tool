@@ -25,25 +25,14 @@
       "gatekeeperAssess": false
     },
     "dmg": {
-      "format": "UDZO",
-      "window": {
-        "width": 540,
-        "height": 380
-      },
-      "contents": [
-        {
-          "x": 410,
-          "y": 180,
-          "type": "link",
-          "path": "/Applications"
-        },
-        {
-          "x": 130,
-          "y": 180,
-          "type": "file"
-        }
-      ]
-    },
+  "format": "UDZO",
+  "internetEnabled": true,
+  "title": "DevQCPro ${version}",
+  "contents": [
+    { "x": 410, "y": 180, "type": "link", "path": "/Applications" },
+    { "x": 130, "y": 180, "type": "file" }
+  ]
+},
     "files": [
       "src/**/*",
       "node_modules/**/*",
