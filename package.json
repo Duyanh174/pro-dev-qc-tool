@@ -16,7 +16,10 @@
     },
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "build/icon.icns",
       "hardenedRuntime": true,
       "gatekeeperAssess": false
@@ -28,8 +31,17 @@
         "height": 380
       },
       "contents": [
-        { "x": 410, "y": 180, "type": "link", "path": "/Applications" },
-        { "x": 130, "y": 180, "type": "file" }
+        {
+          "x": 410,
+          "y": 180,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 130,
+          "y": 180,
+          "type": "file"
+        }
       ]
     },
     "files": [
@@ -40,12 +52,14 @@
     "asar": true
   },
   "devDependencies": {
-    "electron": "^latest",
-    "electron-builder": "^latest"
+    "electron": "latest",
+    "electron-builder": "latest"
   },
   "dependencies": {
-    "sass": "^1.x",
-    "chokidar": "^3.x",
-    "ws": "^8.x"
+    "autoprefixer": "^10.4.23",
+    "chokidar": "latest",
+    "postcss": "^8.5.6",
+    "sass": "latest",
+    "ws": "latest"
   }
 }

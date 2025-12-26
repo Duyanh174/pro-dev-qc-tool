@@ -8,86 +8,106 @@
 <body>
     <div class="app-container">
         <nav class="sidebar-nav">
-            <div class="nav-item active" id="nav-compiler" onclick="showTab('compiler')">✨</div>
-            <div class="nav-item" id="nav-settings" onclick="showTab('settings')">⚙️</div>
+            <div class="nav-group">
+                <div class="nav-item active" id="nav-compiler" onclick="showTab('compiler')" title="Compiler">✨</div>
+                <div class="nav-item" id="nav-settings" onclick="showTab('settings')" title="Settings">⚙️</div>
+            </div>
         </nav>
     
         <main class="main-content">
             <div id="tab-compiler" class="tab-content">
-                <header class="main-header">
-                    <h1>Sass Engine</h1>
-                    <div class="status-badge">
-                        <div id="status-dot" class="status-dot" style="background: var(--text-dim);"></div>
-                        <span id="status">Ready</span>
-                    </div>
-                </header>
-    
-                <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                        <div class="tab-switcher">
-                            <button id="modeSame" class="tab-btn active" onclick="setMode('same')">At Place</button>
-                            <button id="modeCustom" class="tab-btn" onclick="setMode('custom')">Custom Path</button>
+                <div class="project-engine-layout">
+                    
+                    <aside class="project-panel">
+                        <div class="panel-header">
+                            <span>PROJECTS</span>
+                            <button class="add-mini-btn" onclick="UI.showProjectModal()" title="New Project">+</button>
                         </div>
-                        <div style="display: flex; gap: 10px;">
-                            <button id="btnStop" class="action-btn" style="display:none; background: rgba(239, 68, 68, 0.1); color: var(--error); border: 1px solid var(--error); box-shadow: none;">Stop Engine</button>
-                            <button id="btnResume" class="action-btn" style="display:none; background: var(--success); color: white;">Resume Engine</button>
+                        <div id="project-list" class="project-list-container">
+                            </div>
+                    </aside>
+            
+                    <div class="engine-workspace">
+                        <header class="workspace-header">
+                            <div class="header-info">
+                                <h1 id="active-project-name">Select a Project</h1>
+                                <div id="active-project-path" class="sub-path">No directory selected</div>
+                            </div>
+                            <div class="status-wrapper">
+                                <div class="status-badge">
+                                    <div id="status-dot" class="status-dot"></div>
+                                    <span id="status">Ready</span>
+                                </div>
+                            </div>
+                        </header>
+            
+                        <div class="card main-controls">
+                            <div class="card-row">
+                                <div class="tab-switcher">
+                                    <button id="modeSame" class="tab-btn active" onclick="setMode('same')">At Place</button>
+                                    <button id="modeCustom" class="tab-btn" onclick="setMode('custom')">Custom Path</button>
+                                </div>
+                                <div class="action-group">
+                                    <button id="btnStop" class="action-btn btn-danger" style="display:none">Stop Engine</button>
+                                    <button id="btnResume" class="action-btn btn-success" style="display:none">Resume Engine</button>
+                                </div>
+                            </div>
+            
+                            <div class="folder-selection-grid">
+                                <div class="drop-zone">
+                                    <span class="label">SOURCE SCSS</span>
+                                    <button class="action-btn full-width" id="btnIn">📂 Select SCSS Directory</button>
+                                    <div id="txtIn" class="path-text">Waiting for input...</div>
+                                </div>
+                                <div id="outputCard" class="drop-zone" style="visibility: hidden;">
+                                    <span class="label">TARGET CSS</span>
+                                    <button class="action-btn full-width btn-secondary" id="btnOut">📂 Set Destination</button>
+                                    <div id="txtOut" class="path-text">Same as source</div>
+                                </div>
+                            </div>
+                        </div>
+            
+                        <div class="log-container">
+                            <div class="log-header">
+                                <div class="log-title">
+                                    <span class="pulse-icon"></span> LIVE ACTIVITY
+                                </div>
+                                <span onclick="clearLogs()" class="clear-all-link">CLEAR LOGS</span>
+                            </div>
+                            <div id="logs" class="terminal-style"></div>
                         </div>
                     </div>
-    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div>
-                            <span style="font-size: 11px; color: var(--text-dim); font-weight: 600; display: block; margin-bottom: 8px;">SOURCE FOLDER</span>
-                            <button class="action-btn" style="width:100%" id="btnIn">📂 Select SCSS Directory</button>
-                            <div id="txtIn" style="font-size:11px; color: var(--text-dim); margin-top:12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Waiting for input...</div>
-                        </div>
-                        <div id="outputCard" style="visibility: hidden;">
-                            <span style="font-size: 11px; color: var(--text-dim); font-weight: 600; display: block; margin-bottom: 8px;">TARGET FOLDER</span>
-                            <button class="action-btn" style="width:100%; background: #475569; box-shadow: none;" id="btnOut">📂 Set Destination</button>
-                            <div id="txtOut" style="font-size:11px; color: var(--text-dim); margin-top:12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Same as source</div>
-                        </div>
-                    </div>
-                </div>
-    
-                <div class="log-container">
-                    <div class="log-header">
-                        <span style="font-size: 12px; font-weight: 700; color: var(--text-dim);">LIVE LOG ACTIVITY</span>
-                        <span onclick="clearLogs()" style="cursor:pointer; font-size: 11px; color: var(--accent); font-weight: 600;">CLEAR ALL</span>
-                    </div>
-                    <div id="logs"></div>
                 </div>
             </div>
     
             <div id="tab-settings" class="tab-content" style="display:none">
-                <header class="main-header">
-                    <h1>System Settings</h1>
-                </header>
-            
-                <div class="module-selector-nav">
-                    <button class="mod-btn active" onclick="showModuleSettings('convert', event)">Compiler</button>
-                    <button class="mod-btn" onclick="showModuleSettings('overlay', event)">Overlay</button>
-                    <button class="mod-btn" onclick="showModuleSettings('ruler', event)">Ruler</button>
-                </div>
-            
-                <div class="module-settings-container">
+                <div class="settings-wrapper">
+                    <header class="workspace-header">
+                        <h1>System Settings</h1>
+                    </header>
+                    <div class="module-selector-nav">
+                        <button class="mod-btn active" onclick="showModuleSettings('convert', event)">Compiler</button>
+                        <button class="mod-btn" onclick="showModuleSettings('overlay', event)">Overlay</button>
+                        <button class="mod-btn" onclick="showModuleSettings('ruler', event)">Ruler</button>
+                    </div>
+                    
                     <div id="mod-settings-convert" class="mod-settings-panel">
-                        <div class="card" style="max-width: 600px;">
-                            <h3 style="font-size: 14px; margin-top: 0; margin-bottom: 25px; color: #fff;">Notification Control</h3>
-                            
+                        <div class="card config-card">
+                            <h3 class="card-title">Notification Control</h3>
                             <div class="switch-container">
-                                <div>
-                                    <div style="font-size: 14px; font-weight: 600;">Desktop Notifications</div>
-                                    <div style="font-size: 12px; color: var(--text-dim);">Show popup error on macOS/Windows</div>
+                                <div class="switch-info">
+                                    <div class="sw-title">Desktop Notifications</div>
+                                    <div class="sw-desc">Show popup error on macOS/Windows</div>
                                 </div>
                                 <label class="switch">
                                     <input type="checkbox" id="cfg-native" checked onchange="saveCfg()">
                                     <span class="slider"></span>
                                 </label>
                             </div>
-            
                             <div class="switch-container">
-                                <div>
-                                    <div style="font-size: 14px; font-weight: 600;">Browser Error HUD</div>
-                                    <div style="font-size: 12px; color: var(--text-dim);">Push error overlay to Chrome Extension</div>
+                                <div class="switch-info">
+                                    <div class="sw-title">Browser Error HUD</div>
+                                    <div class="sw-desc">Push error overlay to Chrome Extension</div>
                                 </div>
                                 <label class="switch">
                                     <input type="checkbox" id="cfg-web" checked onchange="saveCfg()">
@@ -96,15 +116,26 @@
                             </div>
                         </div>
                     </div>
-            
-                    <div id="mod-settings-overlay" class="mod-settings-panel" style="display:none">
-                        <div class="card">
-                            <p style="color:var(--text-dim); font-size:13px; text-align:center; padding: 40px;">Ghost Overlay settings coming soon...</p>
-                        </div>
-                    </div>
                 </div>
             </div>
         </main>
+    </div>
+
+    <div id="project-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3>New Project</h3>
+            <p style="color: var(--text-dim); font-size: 12px;">Give your project a name to stay organized.</p>
+            
+            <div id="ram-warning" style="display:none; background: rgba(245, 158, 11, 0.1); border: 1px solid var(--warning); color: var(--warning); padding: 10px; border-radius: 8px; font-size: 11px; margin-bottom: 15px;">
+                ⚠️ <strong>Resource Warning:</strong> Chạy song song nhiều dự án (>4) có thể gây tốn RAM và làm chậm hệ thống.
+            </div>
+    
+            <input type="text" id="new-project-name" placeholder="E.g. My Website Shop" autoFocus>
+            <div class="modal-actions">
+                <button class="tab-btn" onclick="UI.hideProjectModal()">Cancel</button>
+                <button class="action-btn" id="confirm-project-btn">Create Project</button>
+            </div>
+        </div>
     </div>
 
     <script src="../renderer/renderer.js"></script>

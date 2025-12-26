@@ -1,222 +1,695 @@
+/* --- 1. CORE VARIABLES --- */
 :root {
-    --bg-dark: #0f111a;
-    --bg-sidebar: #090a0f;
-    --bg-card: #161925;
+    --bg-dark: #0b0e14;
+    --bg-sidebar: #06080a;
+    --bg-card: #12161f;
+    --bg-input: rgba(0, 0, 0, 0.2);
     --accent: #3d5afe;
     --accent-glow: rgba(61, 90, 254, 0.3);
     --text-main: #ffffff;
-    --text-dim: #94a3b8;
-    --border: rgba(255, 255, 255, 0.06);
-    --success: #10b981; /* Emerald Green */
+    --text-dim: #8492a6;
+    --border: rgba(255, 255, 255, 0.05);
+    --success: #10b981;
     --error: #ef4444;
     --warning: #f59e0b;
+    --panel-width: 260px;
+    /* Chiều rộng phần Project */
 }
 
-* { 
-    box-sizing: border-box; 
+* {
+    box-sizing: border-box;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-body { 
-    margin: 0; 
-    background: var(--bg-dark); 
-    color: var(--text-main); 
-    font-family: 'SF Pro Display', -apple-system, system-ui, sans-serif; 
-    height: 100vh; 
-    overflow: hidden; 
+body {
+    margin: 0;
+    background: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'SF Pro Display', -apple-system, system-ui, sans-serif;
+    height: 100vh;
+    overflow: hidden;
 }
 
-/* --- APP LAYOUT --- */
-.app-container { display: flex; height: 100vh; }
-
-/* --- SIDEBAR: Gọn gàng & Tinh tế --- */
-.sidebar-nav { 
-    width: 72px; 
-    background: var(--bg-sidebar); 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    padding-top: 40px; 
-    border-right: 1px solid var(--border); 
+/* --- 2. LAYOUT --- */
+.app-container {
+    display: flex;
+    height: 100vh;
 }
 
-.nav-item { 
-    width: 48px; height: 48px; margin-bottom: 24px; 
-    display: flex; align-items: center; justify-content: center; 
-    border-radius: 14px; cursor: pointer; font-size: 22px; 
-    background: transparent; color: var(--text-dim);
+.sidebar-nav {
+    width: 68px;
+    background: var(--bg-sidebar);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 25px 0;
+    border-right: 1px solid var(--border);
 }
 
-.nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
-
-.nav-item.active { 
-    background: var(--accent); 
-    color: white; 
-    box-shadow: 0 0 20px var(--accent-glow);
-    transform: scale(1.05);
+.main-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
-/* --- CONTENT AREA --- */
-.main-content { flex: 1; display: flex; flex-direction: column; background: linear-gradient(135deg, #0f111a 0%, #161925 100%); }
-
-.main-header { 
-    padding: 30px 40px; 
-    display: flex; justify-content: space-between; align-items: center;
+.tab-content {
+    height: 100%;
+    width: 100%;
+    display: flex;
 }
 
-.main-header h1 { font-size: 24px; font-weight: 700; margin: 0; background: linear-gradient(to right, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-/* --- ENGINE STATUS BADGE --- */
-.status-badge {
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 14px; border-radius: 100px;
-    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-}
-.status-dot { width: 8px; height: 8px; border-radius: 50%; }
-
-/* --- CARDS: Bento Box Style --- */
-.tab-content { padding: 0 40px 40px 40px; flex: 1; overflow-y: auto; }
-
-.card { 
-    background: var(--bg-card); padding: 25px; border-radius: 20px; 
-    border: 1px solid var(--border); margin-bottom: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+/* Layout bên trong tab Compiler */
+.project-engine-layout {
+    display: flex;
+    flex: 1;
+    width: 100%;
 }
 
-/* --- IPHONE SWITCH (Refined) --- */
-.switch-container {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 16px 0; border-bottom: 1px solid var(--border);
+/* --- 3. PROJECT SIDE PANEL (Phần Project Rộng) --- */
+.project-panel {
+    width: var(--panel-width);
+    background: rgba(0, 0, 0, 0.15);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
 }
-.switch-container:last-child { border-bottom: none; }
 
-.switch { position: relative; width: 46px; height: 26px; }
-.switch input { opacity: 0; width: 0; height: 0; }
-.slider {
-    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #2d2d3d; transition: .3s; border-radius: 34px;
+.panel-header {
+    padding: 30px 20px 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: #475569;
+    letter-spacing: 1.5px;
 }
-.slider:before {
-    position: absolute; content: ""; height: 22px; width: 22px; left: 2px; bottom: 2px;
-    background-color: white; transition: .3s; border-radius: 50%;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-}
-input:checked + .slider { background-color: var(--success); }
-input:checked + .slider:before { transform: translateX(20px); }
 
-/* --- TAB SWITCHER (Glass) --- */
-.tab-switcher { display: flex; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 12px; border: 1px solid var(--border); }
-.tab-btn { 
-    background: transparent; border: none; color: var(--text-dim); 
-    padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px;
+.project-list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
-.tab-btn.active { background: #2a2d3d; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
 
-/* --- TỐI ƯU LOG TERMINAL --- */
+/* Item dự án hiển thị đầy đủ tên */
+.project-item {
+    padding: 12px 15px;
+    border-radius: 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.project-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.project-item.active {
+    background: rgba(61, 90, 254, 0.1);
+    border-color: rgba(61, 90, 254, 0.2);
+}
+
+.project-item .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #1e2533;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.project-item.active .avatar {
+    background: var(--accent);
+    color: white;
+}
+
+.project-item .name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.project-item.active .name {
+    color: white;
+}
+
+/* Nút xóa tinh tế */
+.delete-btn {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: #475569; opacity: 0;
+    transition: all 0.2s;
+}
+
+.project-item:hover .delete-btn {
+    opacity: 1;
+}
+
+.delete-btn:hover {
+    background: var(--error);
+    color: white;
+}
+
+.project-item.active .delete-btn {
+    color: rgba(255,255,255,0.4);
+}
+
+.add-mini-btn {
+    background: #1e2533;
+    border: none;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+/* --- 4. ENGINE WORKSPACE (Phần bên phải) --- */
+.engine-workspace {
+    flex: 1;
+    padding: 30px 40px;
+    overflow-y: auto;
+}
+
+.workspace-header {
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.header-info h1 {
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.sub-path {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    opacity: 0.7;
+}
+
+.card {
+    background: var(--bg-card);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.main-controls {
+    padding: 25px;
+    margin-bottom: 25px;
+}
+
+.card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.folder-selection-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.label {
+    font-size: 11px;
+    color: #475569;
+    font-weight: 800;
+    display: block;
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+}
+
+.path-text {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* --- 5. GIỮ NGUYÊN STYLE NÚT BẤM CŨ CỦA BẠN --- */
+.action-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(61, 90, 254, 0.2);
+    font-size: 13px;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(61, 90, 254, 0.3);
+}
+
+.btn-success {
+    background: var(--success) !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2) !important;
+}
+
+.btn-danger {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: var(--error) !important;
+    border: 1px solid var(--error) !important;
+    box-shadow: none !important;
+}
+
+.btn-secondary {
+    background: #334155 !important;
+    box-shadow: none !important;
+}
+
+.full-width {
+    width: 100%;
+}
+
+/* Style Tab Nav chính */
+.nav-item {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 20px;
+    color: var(--text-dim);
+}
+
+.nav-item.active {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+
+/* Glass Tab Switcher */
+.tab-switcher {
+    display: flex;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 8px 16px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.tab-btn.active {
+    background: #2d3646;
+    color: #fff;
+}
+
+/* --- 6. LOGS --- */
+.log-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 5px;
+}
+
+.log-title {
+    font-size: 11px;
+    font-weight: 800;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pulse-icon {
+    width: 6px;
+    height: 6px;
+    background: var(--success);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--success);
+}
+
+.clear-all-link {
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 700;
+    cursor: pointer;
+}
+
 #logs {
-    background: #050505;
-    padding: 15px;
+    background: #05070a;
+    padding: 20px;
     border-radius: 16px;
-    height: 300px;
+    height: 350px;
     overflow-y: auto;
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     border: 1px solid var(--border);
+    line-height: 1.6;
 }
 
-/* Base style cho mỗi dòng log */
 .log-entry {
-    padding: 8px 12px;
-    border-radius: 8px;
-    margin-bottom: 6px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    animation: slideInLog 0.2s ease-out;
-    border-left: 3px solid transparent;
+    gap: 12px;
 }
 
-@keyframes slideInLog {
-    from { opacity: 0; transform: translateX(-10px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-
-/* --- TỐI ƯU THANH CUỘN (SCSS LOGS) --- */
-
-/* 1. Độ rộng tổng thể của thanh cuộn */
-#logs::-webkit-scrollbar {
-    width: 4px;               /* Siêu mảnh */
-    height: 4px;
-}
-
-/* 2. Phần nền của thanh cuộn (Track) */
-#logs::-webkit-scrollbar-track {
-    background: transparent;  /* Để trong suốt cho sạch */
-}
-
-/* 3. Phần tay cầm cuộn (Thumb) */
-#logs::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1); /* Màu trắng mờ cực nhẹ */
-    border-radius: 20px;                  /* Bo tròn 2 đầu */
-    transition: background 0.3s;
-}
-
-/* 4. Hiệu ứng khi di chuột vào hoặc đang cuộn */
-#logs::-webkit-scrollbar-thumb:hover {
-    background: var(--accent); /* Hiện màu xanh accent khi tương tác */
-}
-
-/* Hiệu ứng ẩn thanh cuộn khi không rê chuột vào vùng Log (tùy chọn) */
-#logs {
-    scrollbar-width: thin; /* Cho Firefox */
-    scrollbar-color: var(--border) transparent;
-}
-
-/* Màu cho SUCCESS */
-.log-success {
-    background: rgba(16, 185, 129, 0.08);
-    color: #34d399;
-    border-left-color: #10b981;
-}
-.log-success::before { content: "●"; color: #10b981; font-size: 14px; }
-
-/* Màu cho ERROR */
-.log-error {
-    background: rgba(239, 68, 68, 0.1);
-    color: #f87171;
-    border-left-color: #ef4444;
-    font-weight: 500;
-}
-.log-error::before { content: "✖"; color: #ef4444; font-size: 14px; }
-
-/* Màu cho WARNING */
-.log-warn {
-    background: rgba(245, 158, 11, 0.08);
-    color: #fbbf24;
-    border-left-color: #f59e0b;
-}
-.log-warn::before { content: "▲"; color: #f59e0b; font-size: 14px; }
-
-/* Timestamp tối mờ */
 .log-time {
-    color: #475569;
-    min-width: 70px;
+    color: #334155;
     font-size: 10px;
+    min-width: 60px;
 }
 
-/* --- BUTTONS --- */
-.action-btn { 
-    background: var(--accent); color: white; border: none; 
-    padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: 600;
-    box-shadow: 0 4px 15px rgba(61, 90, 254, 0.2);
+.log-success {
+    color: #34d399;
 }
-.action-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(61, 90, 254, 0.3); }
 
-/* Sub-nav settings */
-.module-selector-nav { display: flex; gap: 8px; margin-bottom: 25px; }
-.mod-btn { 
-    background: rgba(255,255,255,0.03); border: 1px solid var(--border); 
-    color: var(--text-dim); padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; 
+.log-error {
+    color: #f87171;
 }
-.mod-btn.active { background: rgba(61, 90, 254, 0.1); color: var(--accent); border-color: var(--accent); }
+
+.log-warn {
+    color: #fbbf24;
+}
+
+/* --- 7. GIỮ NGUYÊN STYLE CÔNG TẮC GẠT --- */
+.switch-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.sw-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.sw-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.switch {
+    position: relative;
+    width: 46px;
+    height: 26px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background-color: #2d2d3d;
+    transition: .3s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+input:checked+.slider {
+    background-color: var(--success);
+}
+
+input:checked+.slider:before {
+    transform: translateX(20px);
+}
+
+/* --- 8. MODAL & OTHERS --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    padding: 35px;
+    border-radius: 28px;
+    border: 1px solid var(--border);
+    width: 400px;
+}
+
+.modal-content h3 {
+    margin: 0 0 10px 0;
+}
+
+.modal-content input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    padding: 15px;
+    border-radius: 12px;
+    color: #fff;
+    margin: 20px 0;
+    outline: none;
+    font-size: 15px;
+}
+
+.modal-content input:focus {
+    border-color: var(--accent);
+    background: rgba(61, 90, 254, 0.05);
+}
+
+.status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--text-dim);
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #475569;
+}
+
+#logs::-webkit-scrollbar {
+    width: 4px;
+}
+
+#logs::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+/* --- SETTINGS TAB LAYOUT --- */
+.settings-wrapper {
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Sub-navigation bên trong Settings */
+.module-selector-nav {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 30px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 6px;
+    border-radius: 14px;
+    width: fit-content;
+    border: 1px solid var(--border);
+}
+
+.mod-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 10px 24px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.mod-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.mod-btn.active {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+/* Card chứa các dòng cài đặt */
+.config-card {
+    padding: 10px 25px;
+    background: var(--bg-card);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+}
+
+.card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-top: 20px;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Từng dòng cài đặt */
+.switch-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.switch-container:last-child {
+    border-bottom: none;
+}
+
+.switch-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sw-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.sw-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.4;
+}
+
+/* --- IPHONE TOGGLE SWITCH (iOS Style) --- */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+    flex-shrink: 0; /* Đảm bảo nút không bị bóp méo */
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #2d2d3d; /* Màu nền khi tắt (Dark Grey) */
+    transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 34px;
+}
+
+/* Nút tròn trắng bên trong */
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 24px;
+    width: 24px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3); /* Đổ bóng nhẹ kiểu iOS */
+}
+
+/* Hiệu ứng khi được bật */
+input:checked + .slider {
+    background-color: var(--success); /* Màu xanh Emerald của bạn */
+}
+
+/* Di chuyển nút tròn khi bật */
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+/* Hiệu ứng nhấn giữ (Active state) */
+.switch:active .slider:before {
+    width: 28px; /* Nút tròn hơi dài ra một chút khi nhấn (giống iPhone thật) */
+}
+
+input:checked:active + .slider:before {
+    transform: translateX(18px); /* Điều chỉnh lại vị trí khi nhấn giữ */
+}
