@@ -1,11 +1,15 @@
 const CodePen = {
     isDraggingV: false,
     isDraggingH: false,
-    
-    // Vertical states
     startY: 0,
     startTranslateY: 0,
-    
+    // Lưu trữ các instance của Ace
+    editors: {
+        html: null,
+        css: null,
+        js: null
+    },
+
     init() {
         const container = document.getElementById('codepen-container');
         if (!container) return;
@@ -13,11 +17,11 @@ const CodePen = {
         container.innerHTML = `
         <div class="codepen-container-main">
             <div class="editor-section-bg" id="editor-section">
-                <div class="editor-box" style="flex: 1;"><div class="editor-label">HTML</div><textarea id="html-code" spellcheck="false" placeholder="<div>Hello</div>"></textarea></div>
+                <div class="editor-box" style="flex: 1;"><div class="editor-label">HTML</div><div id="html-code" class="ace-editor-container"></div></div>
                 <div class="resizer-h horizontal-resizer"></div>
-                <div class="editor-box" style="flex: 1;"><div class="editor-label">CSS</div><textarea id="css-code" spellcheck="false" placeholder="body{}"></textarea></div>
+                <div class="editor-box" style="flex: 1;"><div class="editor-label">CSS</div><div id="css-code" class="ace-editor-container"></div></div>
                 <div class="resizer-h horizontal-resizer"></div>
-                <div class="editor-box" style="flex: 1;"><div class="editor-label">JS</div><textarea id="js-code" spellcheck="false" placeholder="console.log()"></textarea></div>
+                <div class="editor-box" style="flex: 1;"><div class="editor-label">JS</div><div id="js-code" class="ace-editor-container"></div></div>
             </div>
             <div class="preview-sliding-overlay" id="preview-overlay-container">
                 <div class="resizer-v-handle" id="main-vertical-resizer"><div class="handle-line"></div></div>
@@ -37,7 +41,45 @@ const CodePen = {
         const overlay = document.getElementById('preview-overlay-container');
         overlay.style.transform = `translateY(45vh)`;
 
+        // Khởi tạo Ace Editor
+        this.initAce();
+        
         requestAnimationFrame(() => this.initResizers());
+    },
+
+    initAce() {
+        const config = {
+            theme: "ace/theme/monokai",
+            fontSize: "13px",
+            useSoftTabs: true,
+            showPrintMargin: false,
+            // --- HAI DÒNG QUAN TRỌNG NHẤT ---
+            wrap: true,              // Bật tự động xuống dòng khi thiếu chiều rộng
+            indentedSoftWrap: false, // Tối ưu: không thụt lề dòng mới giúp scroll và resize mượt hơn
+            // -------------------------------
+            useWorker: false,        // Tối ưu: tắt background worker nếu không cần kiểm tra lỗi cú pháp gắt gao
+        };
+
+        this.editors.html = ace.edit("html-code");
+        this.editors.html.setOptions(config);
+        this.editors.html.session.setMode("ace/mode/html");
+        this.editors.html.setValue("<div>Hello World, kéo thử width của tôi để xem dòng này tự xuống hàng nhé!</div>", 1);
+        this.editors.css = ace.edit("css-code");
+        this.editors.css.setOptions(config);
+        this.editors.css.session.setMode("ace/mode/css");
+        this.editors.css.setValue("body { color: red; }", 1);
+
+        this.editors.js = ace.edit("js-code");
+        this.editors.js.setOptions(config);
+        this.editors.js.session.setMode("ace/mode/javascript");
+        this.editors.js.setValue("console.log('Hello CodePen');", 1);
+    },
+
+    // Hàm gọi resize cho tất cả editor
+    resizeEditors() {
+        Object.values(this.editors).forEach(editor => {
+            if (editor) editor.resize();
+        });
     },
 
     initResizers() {
@@ -48,19 +90,18 @@ const CodePen = {
 
         if (!vHandle || !overlay) return;
 
-        // --- 1. KÉO DỌC (PREVIEW DRAWER) ---
         const moveV = (e) => {
             if (!this.isDraggingV) return;
             const deltaY = e.clientY - this.startY;
             let newY = this.startTranslateY + deltaY;
-
-            // Giới hạn biên
             const minBound = 40;
             const maxBound = window.innerHeight - 60;
             if (newY < minBound) newY = minBound;
             if (newY > maxBound) newY = maxBound;
-
             overlay.style.transform = `translateY(${newY}px)`;
+            
+            // Cập nhật lại kích thước editor khi kéo drawer lên xuống
+            this.resizeEditors();
         };
 
         const upV = (e) => {
@@ -78,7 +119,6 @@ const CodePen = {
             const style = window.getComputedStyle(overlay);
             const matrix = new WebKitCSSMatrix(style.transform);
             this.startTranslateY = matrix.m42;
-
             blocker.style.display = 'block';
             mainContainer.classList.add('is-dragging-global');
             vHandle.setPointerCapture(e.pointerId);
@@ -86,7 +126,6 @@ const CodePen = {
             window.addEventListener('pointerup', upV);
         });
 
-        // --- 2. KÉO NGANG (EDITORS WIDTH) - Tối ưu 1:1 ---
         const hResizers = document.querySelectorAll('.horizontal-resizer');
         hResizers.forEach(resizer => {
             let startX, startLWidth, startRWidth, leftBox, rightBox;
@@ -94,14 +133,15 @@ const CodePen = {
             const moveH = (ev) => {
                 if (!this.isDraggingH) return;
                 const deltaX = ev.clientX - startX;
-                
-                // Cập nhật trực tiếp bằng Flex-basis để đạt tốc độ 1:1
                 const newLWidth = startLWidth + deltaX;
                 const newRWidth = startRWidth - deltaX;
 
                 if (newLWidth > 50 && newRWidth > 50) {
                     leftBox.style.flex = `0 0 ${newLWidth}px`;
                     rightBox.style.flex = `0 0 ${newRWidth}px`;
+                    
+                    // QUAN TRỌNG: Resize Ace ngay lập tức khi kéo ngang
+                    this.resizeEditors();
                 }
             };
 
@@ -125,7 +165,6 @@ const CodePen = {
                 blocker.style.display = 'block';
                 mainContainer.classList.add('is-dragging-global');
                 resizer.setPointerCapture(e.pointerId);
-                
                 window.addEventListener('pointermove', moveH, { passive: true });
                 window.addEventListener('pointerup', upH);
             });
@@ -133,9 +172,11 @@ const CodePen = {
     },
 
     run() {
-        const html = document.getElementById('html-code').value;
-        const css = document.getElementById('css-code').value;
-        const js = document.getElementById('js-code').value;
+        // Lấy giá trị từ Ace thay vì textarea
+        const html = this.editors.html.getValue();
+        const css = this.editors.css.getValue();
+        const js = this.editors.js.getValue();
+        
         const previewEl = document.getElementById('preview-window');
         if (!previewEl) return;
 
@@ -147,15 +188,13 @@ const CodePen = {
     },
 
     clear() {
-        ['html-code', 'css-code', 'js-code'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = '';
-        });
+        this.editors.html.setValue("");
+        this.editors.css.setValue("");
+        this.editors.js.setValue("");
         this.run();
     }
 };
 
 window.runCode = () => CodePen.run();
 window.clearCode = () => CodePen.clear();
-
 document.addEventListener('DOMContentLoaded', () => CodePen.init());
