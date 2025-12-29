@@ -25,14 +25,23 @@
       "gatekeeperAssess": false
     },
     "dmg": {
-  "format": "UDZO",
-  "internetEnabled": true,
-  "title": "DevQCPro ${version}",
-  "contents": [
-    { "x": 410, "y": 180, "type": "link", "path": "/Applications" },
-    { "x": 130, "y": 180, "type": "file" }
-  ]
-},
+      "format": "UDZO",
+      "internetEnabled": true,
+      "title": "DevQCPro ${version}",
+      "contents": [
+        {
+          "x": 410,
+          "y": 180,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 130,
+          "y": 180,
+          "type": "file"
+        }
+      ]
+    },
     "files": [
       "src/**/*",
       "node_modules/**/*",
@@ -47,6 +56,7 @@
   "dependencies": {
     "autoprefixer": "^10.4.23",
     "chokidar": "latest",
+    "monaco-editor": "^0.55.1",
     "postcss": "^8.5.6",
     "sass": "latest",
     "ws": "latest"

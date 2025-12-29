@@ -4,17 +4,20 @@
     <meta charset="UTF-8">
     <title>Pro Dev-QC Tool</title>
     <link rel="stylesheet" href="../styles/main.css">
+    <link rel="stylesheet" href="../styles/codepen/codepen.css">
 </head>
 <body>
     <div class="app-container">
         <nav class="sidebar-nav">
             <div class="nav-group">
                 <div class="nav-item active" id="nav-compiler" onclick="showTab('compiler')" title="Compiler">✨</div>
+                <div class="nav-item" id="nav-codepen" onclick="showTab('codepen')" title="CodePen Mode">📝</div>
                 <div class="nav-item" id="nav-settings" onclick="showTab('settings')" title="Settings">⚙️</div>
             </div>
         </nav>
     
         <main class="main-content">
+            <!-- tab comlier -->
             <div id="tab-compiler" class="tab-content">
                 <div class="project-engine-layout">
                     
@@ -79,7 +82,14 @@
                     </div>
                 </div>
             </div>
-    
+
+            <!-- tab codepen -->
+            <div id="tab-codepen" class="tab-content" style="display:none">
+                <div id="codepen-container" class="codepen-wrapper"></div>
+            </div>
+
+
+            <!-- tab setting -->
             <div id="tab-settings" class="tab-content" style="display:none">
                 <div class="settings-wrapper">
                     <header class="workspace-header">
@@ -148,6 +158,9 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js"></script>
+
     <script src="../renderer/renderer.js"></script>
+    <script src="../renderer/codepen.js" ></script>
 </body>
 </html>

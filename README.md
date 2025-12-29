@@ -2,18 +2,29 @@
 ```
 pro-dev-qc-tool
 ├─ README.md
-├─ conten.js
-├─ css
-│  ├─ compiler.css
-│  └─ main.css
-├─ hud.html
-├─ index.html
-├─ index.js
-├─ inject.js
-├─ manifest.json
-├─ overlay.js
+├─ assets
+├─ build
+│  └─ icon.icns
+├─ extension
+│  └─ inject.js
 ├─ package-lock.json
 ├─ package.json
-└─ renderer.js
+└─ src
+   ├─ main
+   │  └─ index.js
+   ├─ renderer
+   │  ├─ codepen.js
+   │  ├─ overlay.js
+   │  └─ renderer.js
+   ├─ styles
+   │  ├─ codepen
+   │  │  └─ codepen.css
+   │  ├─ compiler.css
+   │  └─ main.css
+   └─ ui
+      ├─ features
+      │  └─ codepen.html
+      ├─ hud.html
+      └─ index.html
 
 ```
