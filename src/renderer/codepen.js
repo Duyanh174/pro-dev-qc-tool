@@ -3,7 +3,11 @@ const CodePen = {
     isDraggingH: false,
     startY: 0,
     startTranslateY: 0,
-    // Lưu trữ các instance của Ace
+    
+    // Biến quản lý Auto Run
+    autoRunEnabled: false, 
+    debounceTimer: null,
+
     editors: {
         html: null,
         css: null,
@@ -14,20 +18,39 @@ const CodePen = {
         const container = document.getElementById('codepen-container');
         if (!container) return;
 
+        // Render HTML Structure
         container.innerHTML = `
         <div class="codepen-container-main">
             <div class="editor-section-bg" id="editor-section">
-                <div class="editor-box" style="flex: 1;"><div class="editor-label">HTML</div><div id="html-code" class="ace-editor-container"></div></div>
+                <div class="editor-box" style="flex: 1;">
+                    <div class="editor-label">HTML</div>
+                    <div id="html-code" class="ace-editor-container"></div>
+                </div>
                 <div class="resizer-h horizontal-resizer"></div>
-                <div class="editor-box" style="flex: 1;"><div class="editor-label">CSS</div><div id="css-code" class="ace-editor-container"></div></div>
+                <div class="editor-box" style="flex: 1;">
+                    <div class="editor-label">CSS</div>
+                    <div id="css-code" class="ace-editor-container"></div>
+                </div>
                 <div class="resizer-h horizontal-resizer"></div>
-                <div class="editor-box" style="flex: 1;"><div class="editor-label">JS</div><div id="js-code" class="ace-editor-container"></div></div>
+                <div class="editor-box" style="flex: 1;">
+                    <div class="editor-label">JS</div>
+                    <div id="js-code" class="ace-editor-container"></div>
+                </div>
             </div>
             <div class="preview-sliding-overlay" id="preview-overlay-container">
                 <div class="resizer-v-handle" id="main-vertical-resizer"><div class="handle-line"></div></div>
                 <div class="preview-content-wrapper">
                     <div class="preview-actions">
-                        <button class="action-btn btn-success" onclick="runCode()">▶ RUN PREVIEW</button>
+                        <button class="action-btn btn-success" onclick="runCode()">▶ RUN</button>
+                        
+                        <label class="toggle-control">
+                            <input type="checkbox" id="auto-run-toggle">
+                            <span class="control"></span>
+                            <span class="label">Auto Run</span>
+                        </label>
+
+                        <div style="flex:1"></div>
+
                         <button class="action-btn btn-secondary" onclick="clearCode()">🗑 Clear</button>
                     </div>
                     <div class="preview-frame-container">
@@ -41,41 +64,68 @@ const CodePen = {
         const overlay = document.getElementById('preview-overlay-container');
         overlay.style.transform = `translateY(45vh)`;
 
-        // Khởi tạo Ace Editor
+        // Sự kiện Toggle Auto Run
+        const toggleBtn = document.getElementById('auto-run-toggle');
+        if(toggleBtn) {
+            toggleBtn.addEventListener('change', (e) => {
+                this.autoRunEnabled = e.target.checked;
+                if (this.autoRunEnabled) this.run();
+            });
+        }
+
         this.initAce();
         
         requestAnimationFrame(() => this.initResizers());
     },
 
     initAce() {
+        // --- CẤU HÌNH TỐI ƯU SCROLL ---
         const config = {
             theme: "ace/theme/monokai",
             fontSize: "13px",
             useSoftTabs: true,
             showPrintMargin: false,
-            // --- HAI DÒNG QUAN TRỌNG NHẤT ---
-            wrap: true,              // Bật tự động xuống dòng khi thiếu chiều rộng
-            indentedSoftWrap: false, // Tối ưu: không thụt lề dòng mới giúp scroll và resize mượt hơn
-            // -------------------------------
-            useWorker: false,        // Tối ưu: tắt background worker nếu không cần kiểm tra lỗi cú pháp gắt gao
+            wrap: true,              
+            indentedSoftWrap: false, 
+            useWorker: false,
+            
+            // [FIX] Scroll Mượt & Không bị che code
+            animatedScroll: true,    // Giúp hiệu ứng cuộn mượt hơn
+            scrollPastEnd: 0.9,      // [QUAN TRỌNG] Cho phép cuộn quá dòng cuối 90% chiều cao view.
+                                     // Giúp đẩy code lên trên khỏi vùng bị Preview che.
+            vScrollBarAlwaysVisible: false, // Ẩn thanh cuộn khi không cần thiết cho gọn
         };
 
-        this.editors.html = ace.edit("html-code");
-        this.editors.html.setOptions(config);
-        this.editors.html.session.setMode("ace/mode/html");
-        this.editors.html.setValue("<div>Hello World, kéo thử width của tôi để xem dòng này tự xuống hàng nhé!</div>", 1);
-        this.editors.css = ace.edit("css-code");
-        this.editors.css.setOptions(config);
-        this.editors.css.session.setMode("ace/mode/css");
-        this.editors.css.setValue("body { color: red; }", 1);
+        const setupEditor = (id, mode, initialValue) => {
+            const editor = ace.edit(id);
+            editor.setOptions(config);
+            editor.session.setMode(`ace/mode/${mode}`);
+            editor.setValue(initialValue, 1);
+            
+            // Xử lý Auto Run
+            editor.session.on('change', () => {
+                this.triggerAutoRun();
+            });
+            
+            // Tối ưu render khi cuộn
+            editor.renderer.setScrollMargin(10, 10); // Thêm padding trên/dưới cho vùng scroll
 
-        this.editors.js = ace.edit("js-code");
-        this.editors.js.setOptions(config);
-        this.editors.js.session.setMode("ace/mode/javascript");
-        this.editors.js.setValue("console.log('Hello CodePen');", 1);
+            return editor;
+        };
+
+        this.editors.html = setupEditor("html-code", "html", "<div>\n  <h1>Hello World</h1>\n  <p>Thử cuộn xuống dưới cùng xem!</p>\n  <p>Dòng code cuối sẽ không bị che nữa.</p>\n</div>");
+        this.editors.css = setupEditor("css-code", "css", "body {\n  color: #00bcd4;\n  font-family: sans-serif;\n  padding: 20px;\n  line-height: 1.6;\n}");
+        this.editors.js = setupEditor("js-code", "javascript", "console.log('CodePen Ready');\n\n// Viết thêm nhiều dòng để test scroll\n// ...\n// ...\nconsole.log('End');");
     },
 
-    // Hàm gọi resize cho tất cả editor
+    triggerAutoRun() {
+        if (!this.autoRunEnabled) return;
+        if (this.debounceTimer) clearTimeout(this.debounceTimer);
+        this.debounceTimer = setTimeout(() => {
+            this.run();
+        }, 800);
+    },
+
     resizeEditors() {
         Object.values(this.editors).forEach(editor => {
             if (editor) editor.resize();
@@ -99,8 +149,6 @@ const CodePen = {
             if (newY < minBound) newY = minBound;
             if (newY > maxBound) newY = maxBound;
             overlay.style.transform = `translateY(${newY}px)`;
-            
-            // Cập nhật lại kích thước editor khi kéo drawer lên xuống
             this.resizeEditors();
         };
 
@@ -139,8 +187,6 @@ const CodePen = {
                 if (newLWidth > 50 && newRWidth > 50) {
                     leftBox.style.flex = `0 0 ${newLWidth}px`;
                     rightBox.style.flex = `0 0 ${newRWidth}px`;
-                    
-                    // QUAN TRỌNG: Resize Ace ngay lập tức khi kéo ngang
                     this.resizeEditors();
                 }
             };
@@ -172,7 +218,6 @@ const CodePen = {
     },
 
     run() {
-        // Lấy giá trị từ Ace thay vì textarea
         const html = this.editors.html.getValue();
         const css = this.editors.css.getValue();
         const js = this.editors.js.getValue();
@@ -181,7 +226,23 @@ const CodePen = {
         if (!previewEl) return;
 
         const preview = previewEl.contentWindow.document;
-        const content = `<!DOCTYPE html><html><head><style>body{margin:0;padding:15px;font-family:sans-serif;} ${css}</style></head><body>${html}<script>${js}<\/script></body></html>`;
+        const content = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>body{margin:0;padding:15px;font-family:sans-serif;} ${css}</style>
+            </head>
+            <body>
+                ${html}
+                <script>
+                    try { ${js} } catch (err) {
+                        console.error(err);
+                        document.body.innerHTML += '<div style="color:red; margin-top:20px; border-top:1px solid #ddd; padding-top:10px;">JS Error: ' + err.message + '</div>';
+                    }
+                <\/script>
+            </body>
+            </html>`;
+            
         preview.open();
         preview.write(content);
         preview.close();
