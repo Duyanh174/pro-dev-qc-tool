@@ -231,3 +231,103 @@
     color: white;
     border-color: #007acc;
 }
+
+
+/* Scope CSS chỉ ảnh hưởng bên trong codepen-container-main */
+.codepen-container-main .preview-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 0 15px;
+    background: #1e1e1e; /* Màu nền header tối */
+    border-bottom: 1px solid #333;
+    height: 45px;
+    flex-shrink: 0;
+    z-index: 1000;
+}
+
+/* Tên thương hiệu/Logo */
+.codepen-container-main .preview-actions .brand-name {
+    color: #007acc;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 1px;
+    margin-right: 10px;
+    user-select: none;
+}
+
+/* Dropdown chọn Theme */
+.codepen-container-main .preview-actions .theme-select {
+    background: #2d2d2d;
+    color: #ccc;
+    border: 1px solid #444;
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.codepen-container-main .preview-actions .theme-select:hover {
+    border-color: #007acc;
+}
+
+.codepen-container-main .preview-actions .theme-select option {
+    background: #1e1e1e;
+    color: #ccc;
+}
+
+/* Nút bấm trong header */
+.codepen-container-main .preview-actions .action-btn {
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    text-transform: uppercase;
+}
+
+.codepen-container-main .preview-actions .btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.codepen-container-main .preview-actions .btn-secondary {
+    background: #3e3e3e;
+    color: #ddd;
+}
+
+.codepen-container-main .preview-actions .action-btn:hover {
+    opacity: 0.85;
+}
+
+.codepen-container-main .preview-actions .action-btn:active {
+    transform: scale(0.96);
+}
+
+/* Toggle Control trong header */
+.codepen-container-main .preview-actions .toggle-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.codepen-container-main .preview-actions .toggle-control .label {
+    font-size: 11px;
+    color: #858585;
+    font-weight: 600;
+}
+
+/* Điều chỉnh lại vị trí Editor Section để không bị Header đè */
+.codepen-container-main .editor-section-bg {
+    position: relative;
+    top: 0;
+    height: calc(100% - 45px); /* Trừ đi chiều cao header */
+}

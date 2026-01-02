@@ -18,6 +18,27 @@ const CodePen = {
 
         container.innerHTML = `
         <div class="codepen-container-main">
+            <div class="preview-actions">
+        <div class="brand-name">PRO EDITOR</div>
+        <button class="action-btn btn-success" onclick="runCode()">▶ RUN</button>
+        <label class="toggle-control">
+            <input type="checkbox" id="auto-run-toggle">
+            <span class="control"></span>
+            <span class="label">Auto Run</span>
+        </label>
+        
+        <div style="flex:1"></div>
+
+        <select id="theme-selector" class="theme-select">
+            <option value="ace/theme/monokai">Monokai</option>
+            <option value="ace/theme/dracula">Dracula</option>
+            <option value="ace/theme/github">GitHub</option>
+            <option value="ace/theme/twilight">Twilight</option>
+            <option value="ace/theme/nord_dark">Nord Dark</option>
+        </select>
+        
+        <button class="action-btn btn-secondary" onclick="clearCode()">🗑 Clear</button>
+    </div>
             <div class="editor-section-bg" id="editor-section">
                 <div class="editor-box" style="flex: 1;">
                     <div class="editor-label">
@@ -58,16 +79,6 @@ const CodePen = {
             <div class="preview-sliding-overlay" id="preview-overlay-container">
                 <div class="resizer-v-handle" id="main-vertical-resizer"><div class="handle-line"></div></div>
                 <div class="preview-content-wrapper">
-                    <div class="preview-actions">
-                        <button class="action-btn btn-success" onclick="runCode()">▶ RUN</button>
-                        <label class="toggle-control">
-                            <input type="checkbox" id="auto-run-toggle">
-                            <span class="control"></span>
-                            <span class="label">Auto Run</span>
-                        </label>
-                        <div style="flex:1"></div>
-                        <button class="action-btn btn-secondary" onclick="clearCode()">🗑 Clear</button>
-                    </div>
                     <div class="preview-frame-container">
                         <div id="drag-blocker"></div>
                         <iframe id="preview-window"></iframe>
@@ -136,6 +147,16 @@ const CodePen = {
             maxLines: Infinity,
             showFoldWidgets: true
         };
+
+        const themeSelector = document.getElementById('theme-selector');
+if(themeSelector) {
+    themeSelector.addEventListener('change', (e) => {
+        const theme = e.target.value;
+        Object.values(this.editors).forEach(editor => {
+            if (editor) editor.setTheme(theme);
+        });
+    });
+}
 
         const setupEditor = (id, gutterId, mode, initialValue) => {
             const editor = ace.edit(id);
