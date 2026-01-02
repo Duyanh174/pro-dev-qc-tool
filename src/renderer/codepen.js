@@ -3,8 +3,6 @@ const CodePen = {
     isDraggingH: false,
     startY: 0,
     startTranslateY: 0,
-    
-    // Biến quản lý Auto Run
     autoRunEnabled: false, 
     debounceTimer: null,
 
@@ -18,39 +16,56 @@ const CodePen = {
         const container = document.getElementById('codepen-container');
         if (!container) return;
 
-        // Render HTML Structure
         container.innerHTML = `
         <div class="codepen-container-main">
             <div class="editor-section-bg" id="editor-section">
                 <div class="editor-box" style="flex: 1;">
-                    <div class="editor-label">HTML</div>
-                    <div id="html-code" class="ace-editor-container"></div>
+                    <div class="editor-label">
+                        <span>HTML</span>
+                        <button class="format-btn" onclick="CodePen.formatCode('html')">Format</button>
+                    </div>
+                    <div class="editor-content-wrapper">
+                        <div id="html-gutter" class="custom-line-numbers"></div>
+                        <div id="html-code" class="ace-editor-container"></div>
+                    </div>
                 </div>
                 <div class="resizer-h horizontal-resizer"></div>
+
                 <div class="editor-box" style="flex: 1;">
-                    <div class="editor-label">CSS</div>
-                    <div id="css-code" class="ace-editor-container"></div>
+                    <div class="editor-label">
+                        <span>CSS</span>
+                        <button class="format-btn" onclick="CodePen.formatCode('css')">Format</button>
+                    </div>
+                    <div class="editor-content-wrapper">
+                        <div id="css-gutter" class="custom-line-numbers"></div>
+                        <div id="css-code" class="ace-editor-container"></div>
+                    </div>
                 </div>
                 <div class="resizer-h horizontal-resizer"></div>
+
                 <div class="editor-box" style="flex: 1;">
-                    <div class="editor-label">JS</div>
-                    <div id="js-code" class="ace-editor-container"></div>
+                    <div class="editor-label">
+                        <span>JS</span>
+                        <button class="format-btn" onclick="CodePen.formatCode('js')">Format</button>
+                    </div>
+                    <div class="editor-content-wrapper">
+                        <div id="js-gutter" class="custom-line-numbers"></div>
+                        <div id="js-code" class="ace-editor-container"></div>
+                    </div>
                 </div>
             </div>
+            
             <div class="preview-sliding-overlay" id="preview-overlay-container">
                 <div class="resizer-v-handle" id="main-vertical-resizer"><div class="handle-line"></div></div>
                 <div class="preview-content-wrapper">
                     <div class="preview-actions">
                         <button class="action-btn btn-success" onclick="runCode()">▶ RUN</button>
-                        
                         <label class="toggle-control">
                             <input type="checkbox" id="auto-run-toggle">
                             <span class="control"></span>
                             <span class="label">Auto Run</span>
                         </label>
-
                         <div style="flex:1"></div>
-
                         <button class="action-btn btn-secondary" onclick="clearCode()">🗑 Clear</button>
                     </div>
                     <div class="preview-frame-container">
@@ -62,9 +77,9 @@ const CodePen = {
         </div>`;
 
         const overlay = document.getElementById('preview-overlay-container');
-        overlay.style.transform = `translateY(45vh)`;
+        const defaultY = window.innerHeight * 0.45;
+        overlay.style.transform = `translateY(${defaultY}px)`;
 
-        // Sự kiện Toggle Auto Run
         const toggleBtn = document.getElementById('auto-run-toggle');
         if(toggleBtn) {
             toggleBtn.addEventListener('change', (e) => {
@@ -74,56 +89,130 @@ const CodePen = {
         }
 
         this.initAce();
-        
+        this.updateScrollMargins(defaultY);
         requestAnimationFrame(() => this.initResizers());
     },
 
+    // --- HÀM FORMAT CODE MỚI ---
+    formatCode(type) {
+        const editor = this.editors[type];
+        if (!editor || typeof prettier === 'undefined') return;
+
+        const rawCode = editor.getValue();
+        let formatted = "";
+
+        try {
+            const options = {
+                parser: type === "js" ? "babel" : (type === "css" ? "css" : "html"),
+                plugins: prettierPlugins,
+                printWidth: 80,
+                tabWidth: 2,
+                semi: true,
+                singleQuote: false,
+            };
+
+            formatted = prettier.format(rawCode, options);
+            editor.setValue(formatted, 1); // 1: đưa con trỏ về đầu
+        } catch (err) {
+            console.error("Format error:", err);
+            alert("Mã nguồn hiện tại có lỗi, không thể định dạng!");
+        }
+    },
+
     initAce() {
-        // --- CẤU HÌNH TỐI ƯU SCROLL ---
         const config = {
             theme: "ace/theme/monokai",
             fontSize: "13px",
             useSoftTabs: true,
             showPrintMargin: false,
+            showGutter: false,
             wrap: true,              
             indentedSoftWrap: false, 
             useWorker: false,
-            
-            // [FIX] Scroll Mượt & Không bị che code
-            animatedScroll: true,    // Giúp hiệu ứng cuộn mượt hơn
-            scrollPastEnd: 0.9,      // [QUAN TRỌNG] Cho phép cuộn quá dòng cuối 90% chiều cao view.
-                                     // Giúp đẩy code lên trên khỏi vùng bị Preview che.
-            vScrollBarAlwaysVisible: false, // Ẩn thanh cuộn khi không cần thiết cho gọn
+            animatedScroll: true,    
+            scrollbarHandler: "native",
+            scrollPastEnd: 0,
+            minLines: 50,
+            maxLines: Infinity,
+            showFoldWidgets: true
         };
 
-        const setupEditor = (id, mode, initialValue) => {
+        const setupEditor = (id, gutterId, mode, initialValue) => {
             const editor = ace.edit(id);
+            const gutterEl = document.getElementById(gutterId);
+            
             editor.setOptions(config);
             editor.session.setMode(`ace/mode/${mode}`);
             editor.setValue(initialValue, 1);
-            
-            // Xử lý Auto Run
+
+            const updateLineNumbers = () => {
+                const session = editor.session;
+                const lineCount = session.getLength();
+                let numbersHtml = "";
+                const lineHeight = editor.renderer.lineHeight || 19;
+
+                for (let i = 0; i < lineCount; i++) {
+                    const multiplier = session.getRowLength(i);
+                    if (multiplier > 0) {
+                        const rowHeight = lineHeight * multiplier;
+                        const foldWidget = session.getFoldWidget(i);
+                        let foldBtn = "";
+                        
+                        if (foldWidget === "start") {
+                            const isFolded = session.isRowFolded(i);
+                            foldBtn = `<span class="fold-icon ${isFolded ? 'is-folded' : ''}" data-row="${i}"></span>`;
+                        }
+
+                        numbersHtml += `<div class="line-number-row" style="height: ${rowHeight}px; line-height: ${lineHeight}px;">
+                            ${foldBtn}<span class="num-text">${i + 1}</span>
+                        </div>`;
+                    }
+                }
+                gutterEl.innerHTML = numbersHtml;
+            };
+
+            gutterEl.onclick = (e) => {
+                if (e.target.classList.contains('fold-icon')) {
+                    const row = parseInt(e.target.getAttribute('data-row'));
+                    editor.session.toggleFold(row);
+                }
+            };
+
+            editor.renderer.on('afterRender', () => {
+                const scrollTop = editor.renderer.getScrollTop();
+                gutterEl.style.transform = `translateY(${-scrollTop}px)`;
+            });
+
             editor.session.on('change', () => {
+                updateLineNumbers();
                 this.triggerAutoRun();
             });
-            
-            // Tối ưu render khi cuộn
-            editor.renderer.setScrollMargin(10, 10); // Thêm padding trên/dưới cho vùng scroll
 
+            editor.session.on('changeWrapLimit', updateLineNumbers);
+            editor.session.on('changeFold', updateLineNumbers);
+
+            setTimeout(updateLineNumbers, 100);
             return editor;
         };
 
-        this.editors.html = setupEditor("html-code", "html", "<div>\n  <h1>Hello World</h1>\n  <p>Thử cuộn xuống dưới cùng xem!</p>\n  <p>Dòng code cuối sẽ không bị che nữa.</p>\n</div>");
-        this.editors.css = setupEditor("css-code", "css", "body {\n  color: #00bcd4;\n  font-family: sans-serif;\n  padding: 20px;\n  line-height: 1.6;\n}");
-        this.editors.js = setupEditor("js-code", "javascript", "console.log('CodePen Ready');\n\n// Viết thêm nhiều dòng để test scroll\n// ...\n// ...\nconsole.log('End');");
+        this.editors.html = setupEditor("html-code", "html-gutter", "html", "<div>\n<h1>Hello</h1>\n</div>");
+        this.editors.css = setupEditor("css-code", "css-gutter", "css", "body{color:cyan;}");
+        this.editors.js = setupEditor("js-code", "js-gutter", "javascript", "function test(){console.log('ready')}");
+    },
+
+    updateScrollMargins(currentTranslateY) {
+        const bottomReservedSpace = window.innerHeight - currentTranslateY;
+        Object.values(this.editors).forEach(editor => {
+            if (editor) {
+                editor.renderer.setScrollMargin(10, bottomReservedSpace + 20, 10, 10);
+            }
+        });
     },
 
     triggerAutoRun() {
         if (!this.autoRunEnabled) return;
         if (this.debounceTimer) clearTimeout(this.debounceTimer);
-        this.debounceTimer = setTimeout(() => {
-            this.run();
-        }, 800);
+        this.debounceTimer = setTimeout(() => this.run(), 800);
     },
 
     resizeEditors() {
@@ -149,6 +238,7 @@ const CodePen = {
             if (newY < minBound) newY = minBound;
             if (newY > maxBound) newY = maxBound;
             overlay.style.transform = `translateY(${newY}px)`;
+            this.updateScrollMargins(newY);
             this.resizeEditors();
         };
 
@@ -177,20 +267,17 @@ const CodePen = {
         const hResizers = document.querySelectorAll('.horizontal-resizer');
         hResizers.forEach(resizer => {
             let startX, startLWidth, startRWidth, leftBox, rightBox;
-
             const moveH = (ev) => {
                 if (!this.isDraggingH) return;
                 const deltaX = ev.clientX - startX;
                 const newLWidth = startLWidth + deltaX;
                 const newRWidth = startRWidth - deltaX;
-
                 if (newLWidth > 50 && newRWidth > 50) {
                     leftBox.style.flex = `0 0 ${newLWidth}px`;
                     rightBox.style.flex = `0 0 ${newRWidth}px`;
                     this.resizeEditors();
                 }
             };
-
             const upH = (ev) => {
                 this.isDraggingH = false;
                 blocker.style.display = 'none';
@@ -199,7 +286,6 @@ const CodePen = {
                 window.removeEventListener('pointermove', moveH);
                 window.removeEventListener('pointerup', upH);
             };
-
             resizer.addEventListener('pointerdown', (e) => {
                 this.isDraggingH = true;
                 leftBox = resizer.previousElementSibling;
@@ -207,7 +293,6 @@ const CodePen = {
                 startX = e.clientX;
                 startLWidth = leftBox.offsetWidth;
                 startRWidth = rightBox.offsetWidth;
-
                 blocker.style.display = 'block';
                 mainContainer.classList.add('is-dragging-global');
                 resizer.setPointerCapture(e.pointerId);
@@ -221,31 +306,11 @@ const CodePen = {
         const html = this.editors.html.getValue();
         const css = this.editors.css.getValue();
         const js = this.editors.js.getValue();
-        
         const previewEl = document.getElementById('preview-window');
         if (!previewEl) return;
-
         const preview = previewEl.contentWindow.document;
-        const content = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>body{margin:0;padding:15px;font-family:sans-serif;} ${css}</style>
-            </head>
-            <body>
-                ${html}
-                <script>
-                    try { ${js} } catch (err) {
-                        console.error(err);
-                        document.body.innerHTML += '<div style="color:red; margin-top:20px; border-top:1px solid #ddd; padding-top:10px;">JS Error: ' + err.message + '</div>';
-                    }
-                <\/script>
-            </body>
-            </html>`;
-            
-        preview.open();
-        preview.write(content);
-        preview.close();
+        const content = `<!DOCTYPE html><html><head><style>body{margin:0;padding:15px;font-family:sans-serif;} ${css}</style></head><body>${html}<script>try { ${js} } catch (err) { console.error(err); }<\/script></body></html>`;
+        preview.open(); preview.write(content); preview.close();
     },
 
     clear() {
