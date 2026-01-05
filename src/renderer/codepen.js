@@ -1,15 +1,17 @@
 const CodePen = {
     isDraggingV: false,
     isDraggingH: false,
-    isDraggingC: false, // Dragging Console
+    isDraggingC: false,
     startY: 0,
     startTranslateY: 0,
     startConsoleHeight: 0,
     autoRunEnabled: false, 
     debounceTimer: null,
     STORAGE_KEY: "codepen_user_data",
-
+    
     editors: { html: null, css: null, js: null },
+    // Dữ liệu CDN
+    externalResources: { css: [], js: [] },
 
     init() {
         const container = document.getElementById('codepen-container');
@@ -33,9 +35,11 @@ const CodePen = {
                     <option value="ace/theme/twilight">Twilight</option>
                     <option value="ace/theme/nord_dark">Nord Dark</option>
                 </select>
+                <button class="action-btn btn-secondary" onclick="CodePen.openCDNModal()">🌐 CDN</button>
                 <button class="action-btn btn-secondary" onclick="CodePen.toggleConsole()">📟 Console</button>
                 <button class="action-btn btn-secondary" onclick="clearCode()">🗑 Clear</button>
             </div>
+
             <div class="editor-section-bg" id="editor-section">
                 <div class="editor-box" style="flex: 1;"><div class="editor-label"><span>HTML</span><button class="format-btn" onclick="CodePen.formatCode('html')">Format</button></div><div class="editor-content-wrapper"><div id="html-gutter" class="custom-line-numbers"></div><div id="html-code" class="ace-editor-container"></div></div></div>
                 <div class="resizer-h horizontal-resizer"></div>
@@ -51,7 +55,7 @@ const CodePen = {
                         <div id="drag-blocker"></div>
                         <iframe id="preview-window" allow="accelerometer; camera; gyroscope; microphone; display-capture; midi; clipboard-read; clipboard-write; web-share" allowfullscreen="true"></iframe>
                     </div>
-
+                    
                     <div class="console-panel" id="console-panel">
                         <div class="resizer-console" id="console-resizer"></div>
                         <div class="console-header">
@@ -67,6 +71,24 @@ const CodePen = {
                                 <input type="text" class="console-input" id="console-command" placeholder="Type JS command...">
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cdn-modal-overlay" id="cdn-modal-overlay">
+                <div class="cdn-modal">
+                    <div class="cdn-modal-header">
+                        <h3 style="margin:0; font-size: 16px; color: #fff;">External Resources</h3>
+                        <button class="format-btn" onclick="CodePen.closeCDNModal()">✕</button>
+                    </div>
+                    <div style="font-size: 11px; color: #858585; margin-bottom: 10px;">Add External CSS or JS via URL</div>
+                    <div class="cdn-input-group">
+                        <input type="text" id="cdn-url" placeholder="https://cdnjs.cloudflare.com/... ">
+                        <button class="action-btn btn-success" onclick="CodePen.addResource()">Add</button>
+                    </div>
+                    <div class="cdn-list" id="cdn-list"></div>
+                    <div style="text-align: right;">
+                        <button class="action-btn btn-secondary" onclick="CodePen.closeCDNModal()">Done</button>
                     </div>
                 </div>
             </div>
@@ -100,6 +122,54 @@ const CodePen = {
         requestAnimationFrame(() => { this.initResizers(); this.syncThemeColors(); });
     },
 
+    // --- CDN MANAGER LOGIC ---
+    openCDNModal() {
+        document.getElementById('cdn-modal-overlay').style.display = 'flex';
+        this.renderCDNList();
+    },
+
+    closeCDNModal() {
+        document.getElementById('cdn-modal-overlay').style.display = 'none';
+        this.saveToStorage();
+        this.run(); // Reload preview để nạp tài nguyên mới
+    },
+
+    addResource() {
+        const url = document.getElementById('cdn-url').value.trim();
+        if (!url) return;
+
+        if (url.endsWith('.css') || url.includes('fonts.googleapis.com')) {
+            this.externalResources.css.push(url);
+        } else {
+            this.externalResources.js.push(url);
+        }
+
+        document.getElementById('cdn-url').value = '';
+        this.renderCDNList();
+    },
+
+    removeResource(type, index) {
+        this.externalResources[type].splice(index, 1);
+        this.renderCDNList();
+    },
+
+    renderCDNList() {
+        const listEl = document.getElementById('cdn-list');
+        let html = '';
+        
+        ['css', 'js'].forEach(type => {
+            this.externalResources[type].forEach((url, index) => {
+                html += `
+                <div class="cdn-item">
+                    <span title="${url}">[${type.toUpperCase()}] ${url}</span>
+                    <span class="cdn-remove" onclick="CodePen.removeResource('${type}', ${index})">✕</span>
+                </div>`;
+            });
+        });
+
+        listEl.innerHTML = html || '<div style="color:#555; font-size: 11px;">No external resources added.</div>';
+    },
+
     // --- CONSOLE LOGIC ---
     setupConsoleEvents() {
         window.addEventListener('message', (event) => {
@@ -125,14 +195,12 @@ const CodePen = {
             panel.style.display = 'none';
         } else {
             panel.style.display = 'flex';
-            panel.style.height = '180px'; // Chiều cao mặc định khi mở
+            panel.style.height = '180px';
             document.getElementById('console-body').style.display = 'flex';
         }
     },
 
-    clearConsole() {
-        document.getElementById('console-logs').innerHTML = '';
-    },
+    clearConsole() { document.getElementById('console-logs').innerHTML = ''; },
 
     appendLog(method, args) {
         const logContainer = document.getElementById('console-logs');
@@ -149,17 +217,25 @@ const CodePen = {
         iframe.contentWindow.postMessage({ type: 'exec-command', command: cmd }, '*');
     },
 
- 
-
+    // --- PERSISTENCE ---
     saveToStorage() {
-        const data = { html: this.editors.html.getValue(), css: this.editors.css.getValue(), js: this.editors.js.getValue() };
+        const data = { 
+            html: this.editors.html.getValue(), 
+            css: this.editors.css.getValue(), 
+            js: this.editors.js.getValue(),
+            resources: this.externalResources // Lưu CDN
+        };
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
     },
 
     loadFromStorage() {
         const saved = localStorage.getItem(this.STORAGE_KEY);
-        return saved ? JSON.parse(saved) : null;
+        const data = saved ? JSON.parse(saved) : null;
+        if (data && data.resources) this.externalResources = data.resources; // Tải CDN
+        return data;
     },
+
+  
 
     formatCode(type) {
         const editor = this.editors[type];
@@ -249,26 +325,17 @@ const CodePen = {
                 this.updateScrollMargins(newY);
                 this.resizeEditors();
             } else if (this.isDraggingC) {
-                // --- KÉO CONSOLE HEIGHT ---
                 const deltaY = this.startY - e.clientY;
                 let newHeight = this.startConsoleHeight + deltaY;
-                const minH = 35; // Chiều cao thanh Tab
+                const minH = 35;
                 if (newHeight < minH) newHeight = minH;
-                
                 cPanel.style.height = `${newHeight}px`;
-
-                // Logic Minimize: Nếu quá thấp, ẩn body
-                if (newHeight <= 45) {
-                    cBody.style.display = 'none';
-                } else {
-                    cBody.style.display = 'flex';
-                }
+                cBody.style.display = (newHeight <= 45) ? 'none' : 'flex';
             }
         };
 
         const up = () => {
-            this.isDraggingV = false;
-            this.isDraggingC = false;
+            this.isDraggingV = false; this.isDraggingC = false;
             blocker.style.display = 'none';
             mainContainer.classList.remove('is-dragging-global');
             window.removeEventListener('pointermove', move);
@@ -280,14 +347,16 @@ const CodePen = {
             const matrix = new WebKitCSSMatrix(window.getComputedStyle(overlay).transform);
             this.startTranslateY = matrix.m42;
             blocker.style.display = 'block'; mainContainer.classList.add('is-dragging-global');
-            window.addEventListener('pointermove', move, { passive: true }); window.addEventListener('pointerup', up);
+            window.addEventListener('pointermove', move, { passive: true });
+            window.addEventListener('pointerup', up);
         });
 
         cResizer.addEventListener('pointerdown', (e) => {
             this.isDraggingC = true; this.startY = e.clientY;
             this.startConsoleHeight = cPanel.offsetHeight;
             blocker.style.display = 'block'; mainContainer.classList.add('is-dragging-global');
-            window.addEventListener('pointermove', move, { passive: true }); window.addEventListener('pointerup', up);
+            window.addEventListener('pointermove', move, { passive: true });
+            window.addEventListener('pointerup', up);
         });
         
         const hResizers = document.querySelectorAll('.horizontal-resizer');
@@ -319,12 +388,17 @@ const CodePen = {
         });
     },
 
+    // --- HÀM RUN CẬP NHẬT ĐỂ NHÚNG CDN ---
     run() {
         const html = this.editors.html.getValue();
         const css = this.editors.css.getValue();
         const js = this.editors.js.getValue();
         const previewEl = document.getElementById('preview-window');
         if (!previewEl) return;
+
+        // Chuyển mảng CDN thành thẻ link và script
+        const externalCSS = this.externalResources.css.map(url => `<link rel="stylesheet" href="${url}">`).join('\n');
+        const externalJS = this.externalResources.js.map(url => `<script src="${url}"><\/script>`).join('\n');
 
         const content = `
         <!DOCTYPE html>
@@ -334,11 +408,13 @@ const CodePen = {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&family=Geist:wght@100..900&display=swap" rel="stylesheet">
             <link rel="stylesheet" href="https://unpkg.com/splitting/dist/splitting.css" />
-            <style>body{margin:0;padding:15px;font-family:sans-serif;color:white;} ${css}</style>
+            
+            ${externalCSS}
+
+            <style>body{margin:0;padding:15px;font-family: 'Poppins', sans-serif; color:white;} ${css}</style>
             <script>
                 (function() {
-                    const methods = ['log', 'warn', 'error', 'info'];
-                    methods.forEach(method => {
+                    ['log', 'warn', 'error', 'info'].forEach(method => {
                         const original = console[method];
                         console[method] = function(...args) {
                             window.parent.postMessage({ type: 'iframe-log', method, arguments: args }, '*');
@@ -358,10 +434,14 @@ const CodePen = {
         </head>
         <body>
             ${html}
-           <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"><\/script>
+            
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"><\/script>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"><\/script>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"><\/script>
             <script src="https://unpkg.com/splitting/dist/splitting.min.js"><\/script>
+
+            ${externalJS}
+
             <script type="module">
                 if (typeof Splitting !== 'undefined') Splitting();
                 if (typeof gsap !== 'undefined') gsap.registerPlugin(ScrollTrigger, Draggable);
@@ -369,7 +449,15 @@ const CodePen = {
             <\/script>
         </body>
         </html>`;
+
         previewEl.srcdoc = content; 
+    },
+
+    clear() {
+        Object.values(this.editors).forEach(ed => ed && ed.setValue("", 1));
+        this.externalResources = { css: [], js: [] }; // Clear luôn CDN
+        localStorage.removeItem(this.STORAGE_KEY);
+        this.run();
     }
 };
 

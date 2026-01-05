@@ -429,3 +429,80 @@
     font-family: inherit;
     font-size: 12px;
 }
+
+/* --- CDN MODAL STYLES --- */
+.cdn-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.cdn-modal {
+    width: 500px;
+    max-width: 90%;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}
+
+.cdn-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+}
+
+.cdn-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.cdn-input-group input {
+    flex: 1;
+    background: #2d2d2d;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    outline: none;
+}
+
+.cdn-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.cdn-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #252526;
+    padding: 6px 12px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #aaa;
+}
+
+.cdn-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 380px;
+}
+
+.cdn-remove {
+    color: #f48771;
+    cursor: pointer;
+    font-weight: bold;
+}
