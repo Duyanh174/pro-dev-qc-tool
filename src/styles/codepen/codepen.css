@@ -66,6 +66,7 @@
     overflow: hidden !important; 
     transition: none !important;
     position: relative;
+    min-width: 0
 }
 
 .editor-label {
@@ -331,3 +332,9 @@
     top: 0;
     height: calc(100% - 45px); /* Trừ đi chiều cao header */
 }
+
+/* Triệt tiêu hoàn toàn hiệu ứng trượt của con trỏ Ace Editor */
+.codepen-container-main .ace_cursor {
+    transition: none !important;
+}
+
