@@ -1,17 +1,15 @@
 const CodePen = {
     isDraggingV: false,
     isDraggingH: false,
+    isDraggingC: false, // Dragging Console
     startY: 0,
     startTranslateY: 0,
+    startConsoleHeight: 0,
     autoRunEnabled: false, 
     debounceTimer: null,
     STORAGE_KEY: "codepen_user_data",
 
-    editors: {
-        html: null,
-        css: null,
-        js: null
-    },
+    editors: { html: null, css: null, js: null },
 
     init() {
         const container = document.getElementById('codepen-container');
@@ -27,9 +25,7 @@ const CodePen = {
                     <span class="control"></span>
                     <span class="label">Auto Run</span>
                 </label>
-                
                 <div style="flex:1"></div>
-
                 <select id="theme-selector" class="theme-select">
                     <option value="ace/theme/monokai">Monokai</option>
                     <option value="ace/theme/dracula">Dracula</option>
@@ -37,44 +33,15 @@ const CodePen = {
                     <option value="ace/theme/twilight">Twilight</option>
                     <option value="ace/theme/nord_dark">Nord Dark</option>
                 </select>
-                
+                <button class="action-btn btn-secondary" onclick="CodePen.toggleConsole()">📟 Console</button>
                 <button class="action-btn btn-secondary" onclick="clearCode()">🗑 Clear</button>
             </div>
             <div class="editor-section-bg" id="editor-section">
-                <div class="editor-box" style="flex: 1;">
-                    <div class="editor-label">
-                        <span>HTML</span>
-                        <button class="format-btn" onclick="CodePen.formatCode('html')">Format</button>
-                    </div>
-                    <div class="editor-content-wrapper">
-                        <div id="html-gutter" class="custom-line-numbers"></div>
-                        <div id="html-code" class="ace-editor-container"></div>
-                    </div>
-                </div>
+                <div class="editor-box" style="flex: 1;"><div class="editor-label"><span>HTML</span><button class="format-btn" onclick="CodePen.formatCode('html')">Format</button></div><div class="editor-content-wrapper"><div id="html-gutter" class="custom-line-numbers"></div><div id="html-code" class="ace-editor-container"></div></div></div>
                 <div class="resizer-h horizontal-resizer"></div>
-
-                <div class="editor-box" style="flex: 1;">
-                    <div class="editor-label">
-                        <span>CSS</span>
-                        <button class="format-btn" onclick="CodePen.formatCode('css')">Format</button>
-                    </div>
-                    <div class="editor-content-wrapper">
-                        <div id="css-gutter" class="custom-line-numbers"></div>
-                        <div id="css-code" class="ace-editor-container"></div>
-                    </div>
-                </div>
+                <div class="editor-box" style="flex: 1;"><div class="editor-label"><span>CSS</span><button class="format-btn" onclick="CodePen.formatCode('css')">Format</button></div><div class="editor-content-wrapper"><div id="css-gutter" class="custom-line-numbers"></div><div id="css-code" class="ace-editor-container"></div></div></div>
                 <div class="resizer-h horizontal-resizer"></div>
-
-                <div class="editor-box" style="flex: 1;">
-                    <div class="editor-label">
-                        <span>JS</span>
-                        <button class="format-btn" onclick="CodePen.formatCode('js')">Format</button>
-                    </div>
-                    <div class="editor-content-wrapper">
-                        <div id="js-gutter" class="custom-line-numbers"></div>
-                        <div id="js-code" class="ace-editor-container"></div>
-                    </div>
-                </div>
+                <div class="editor-box" style="flex: 1;"><div class="editor-label"><span>JS</span><button class="format-btn" onclick="CodePen.formatCode('js')">Format</button></div><div class="editor-content-wrapper"><div id="js-gutter" class="custom-line-numbers"></div><div id="js-code" class="ace-editor-container"></div></div></div>
             </div>
             
             <div class="preview-sliding-overlay" id="preview-overlay-container">
@@ -84,14 +51,30 @@ const CodePen = {
                         <div id="drag-blocker"></div>
                         <iframe id="preview-window" allow="accelerometer; camera; gyroscope; microphone; display-capture; midi; clipboard-read; clipboard-write; web-share" allowfullscreen="true"></iframe>
                     </div>
+
+                    <div class="console-panel" id="console-panel">
+                        <div class="resizer-console" id="console-resizer"></div>
+                        <div class="console-header">
+                            <span class="console-title">Console</span>
+                            <div class="console-actions">
+                                <button class="format-btn" onclick="CodePen.clearConsole()">Clear</button>
+                                <button class="format-btn" onclick="CodePen.toggleConsole()">Close</button>
+                            </div>
+                        </div>
+                        <div class="console-body" id="console-body">
+                            <div class="console-logs" id="console-logs"></div>
+                            <div class="console-input-area">
+                                <input type="text" class="console-input" id="console-command" placeholder="Type JS command...">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>`;
 
+        this.setupConsoleEvents();
         const overlay = document.getElementById('preview-overlay-container');
         const defaultY = window.innerHeight * 0.45;
-        
-        // Cập nhật vị trí và chiều cao ban đầu
         overlay.style.transform = `translateY(${defaultY}px)`;
         overlay.style.height = `calc(100vh - ${defaultY}px)`;
 
@@ -107,20 +90,66 @@ const CodePen = {
         if(themeSelector) {
             themeSelector.addEventListener('change', (e) => {
                 const theme = e.target.value;
-                Object.values(this.editors).forEach(ed => { if (ed) ed.setTheme(theme); });
+                Object.values(this.editors).forEach(ed => ed && ed.setTheme(theme));
                 setTimeout(() => this.syncThemeColors(), 150);
             });
         }
 
         this.initAce();
         this.updateScrollMargins(defaultY);
-        requestAnimationFrame(() => {
-            this.initResizers();
-            this.syncThemeColors();
+        requestAnimationFrame(() => { this.initResizers(); this.syncThemeColors(); });
+    },
+
+    // --- CONSOLE LOGIC ---
+    setupConsoleEvents() {
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'iframe-log') {
+                this.appendLog(event.data.method, event.data.arguments);
+            }
+        });
+        const input = document.getElementById('console-command');
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const cmd = input.value;
+                if (!cmd) return;
+                this.appendLog('info', [`> ${cmd}`]);
+                this.executeConsoleCommand(cmd);
+                input.value = '';
+            }
         });
     },
 
+    toggleConsole() {
+        const panel = document.getElementById('console-panel');
+        if (panel.style.display === 'flex') {
+            panel.style.display = 'none';
+        } else {
+            panel.style.display = 'flex';
+            panel.style.height = '180px'; // Chiều cao mặc định khi mở
+            document.getElementById('console-body').style.display = 'flex';
+        }
+    },
 
+    clearConsole() {
+        document.getElementById('console-logs').innerHTML = '';
+    },
+
+    appendLog(method, args) {
+        const logContainer = document.getElementById('console-logs');
+        if (!logContainer) return;
+        const logItem = document.createElement('div');
+        logItem.className = `log-item log-${method === 'log' ? 'info' : method}`;
+        logItem.innerText = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ');
+        logContainer.appendChild(logItem);
+        logContainer.scrollTop = logContainer.scrollHeight;
+    },
+
+    executeConsoleCommand(cmd) {
+        const iframe = document.getElementById('preview-window');
+        iframe.contentWindow.postMessage({ type: 'exec-command', command: cmd }, '*');
+    },
+
+ 
 
     saveToStorage() {
         const data = { html: this.editors.html.getValue(), css: this.editors.css.getValue(), js: this.editors.js.getValue() };
@@ -203,29 +232,47 @@ const CodePen = {
         const overlay = document.getElementById('preview-overlay-container');
         const blocker = document.getElementById('drag-blocker');
         const mainContainer = document.querySelector('.codepen-container-main');
+        const cResizer = document.getElementById('console-resizer');
+        const cPanel = document.getElementById('console-panel');
+        const cBody = document.getElementById('console-body');
 
         if (!vHandle || !overlay) return;
 
-        const moveV = (e) => {
-            if (!this.isDraggingV) return;
-            const deltaY = e.clientY - this.startY;
-            let newY = this.startTranslateY + deltaY;
-            const minBound = 60; const maxBound = window.innerHeight - 60;
-            if (newY < minBound) newY = minBound; if (newY > maxBound) newY = maxBound;
-            
-            // Cập nhật vị trí và chiều cao tương ứng
-            overlay.style.transform = `translateY(${newY}px)`;
-            overlay.style.height = `calc(100vh - ${newY}px)`;
-            
-            this.updateScrollMargins(newY);
-            this.resizeEditors();
+        const move = (e) => {
+            if (this.isDraggingV) {
+                const deltaY = e.clientY - this.startY;
+                let newY = this.startTranslateY + deltaY;
+                const minBound = 60; const maxBound = window.innerHeight - 60;
+                if (newY < minBound) newY = minBound; if (newY > maxBound) newY = maxBound;
+                overlay.style.transform = `translateY(${newY}px)`;
+                overlay.style.height = `calc(100vh - ${newY}px)`;
+                this.updateScrollMargins(newY);
+                this.resizeEditors();
+            } else if (this.isDraggingC) {
+                // --- KÉO CONSOLE HEIGHT ---
+                const deltaY = this.startY - e.clientY;
+                let newHeight = this.startConsoleHeight + deltaY;
+                const minH = 35; // Chiều cao thanh Tab
+                if (newHeight < minH) newHeight = minH;
+                
+                cPanel.style.height = `${newHeight}px`;
+
+                // Logic Minimize: Nếu quá thấp, ẩn body
+                if (newHeight <= 45) {
+                    cBody.style.display = 'none';
+                } else {
+                    cBody.style.display = 'flex';
+                }
+            }
         };
 
-        const upV = (e) => {
-            this.isDraggingV = false; blocker.style.display = 'none';
+        const up = () => {
+            this.isDraggingV = false;
+            this.isDraggingC = false;
+            blocker.style.display = 'none';
             mainContainer.classList.remove('is-dragging-global');
-            vHandle.releasePointerCapture(e.pointerId);
-            window.removeEventListener('pointermove', moveV); window.removeEventListener('pointerup', upV);
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
         };
 
         vHandle.addEventListener('pointerdown', (e) => {
@@ -233,10 +280,16 @@ const CodePen = {
             const matrix = new WebKitCSSMatrix(window.getComputedStyle(overlay).transform);
             this.startTranslateY = matrix.m42;
             blocker.style.display = 'block'; mainContainer.classList.add('is-dragging-global');
-            vHandle.setPointerCapture(e.pointerId);
-            window.addEventListener('pointermove', moveV, { passive: true }); window.addEventListener('pointerup', upV);
+            window.addEventListener('pointermove', move, { passive: true }); window.addEventListener('pointerup', up);
         });
 
+        cResizer.addEventListener('pointerdown', (e) => {
+            this.isDraggingC = true; this.startY = e.clientY;
+            this.startConsoleHeight = cPanel.offsetHeight;
+            blocker.style.display = 'block'; mainContainer.classList.add('is-dragging-global');
+            window.addEventListener('pointermove', move, { passive: true }); window.addEventListener('pointerup', up);
+        });
+        
         const hResizers = document.querySelectorAll('.horizontal-resizer');
         hResizers.forEach((resizer, index) => {
             let startX, startLWidth, startRWidth, leftBox, rightBox, jsBox;
@@ -251,28 +304,17 @@ const CodePen = {
                     this.resizeEditors();
                 }
             };
-            const upH = (ev) => {
-                this.isDraggingH = false; blocker.style.display = 'none';
-                mainContainer.classList.remove('is-dragging-global');
-                resizer.releasePointerCapture(ev.pointerId);
-                window.removeEventListener('pointermove', moveH); window.removeEventListener('pointerup', upH);
-            };
+            const upH = (ev) => { this.isDraggingH = false; blocker.style.display = 'none'; mainContainer.classList.remove('is-dragging-global'); resizer.releasePointerCapture(ev.pointerId); window.removeEventListener('pointermove', moveH); window.removeEventListener('pointerup', upH); };
             resizer.addEventListener('pointerdown', (e) => {
                 this.isDraggingH = true;
                 leftBox = resizer.previousElementSibling; rightBox = resizer.nextElementSibling;
                 jsBox = document.querySelectorAll('.editor-box')[2];
                 startX = e.clientX; startLWidth = leftBox.offsetWidth; startRWidth = rightBox.offsetWidth;
-                
-                // Fix lỗi khởi tạo Resize H
                 const allBoxes = document.querySelectorAll('.editor-box');
-                for(let i = 0; i <= index; i++) {
-                    allBoxes[i].style.flex = `0 0 ${allBoxes[i].offsetWidth}px`;
-                }
-
+                for(let i = 0; i <= index; i++) { allBoxes[i].style.flex = `0 0 ${allBoxes[i].offsetWidth}px`; }
                 if (index === 0) { jsBox.style.flex = `0 0 ${jsBox.offsetWidth}px`; } else { jsBox.style.flex = "1"; }
                 blocker.style.display = 'block'; mainContainer.classList.add('is-dragging-global');
-                resizer.setPointerCapture(e.pointerId);
-                window.addEventListener('pointermove', moveH, { passive: true }); window.addEventListener('pointerup', upH);
+                resizer.setPointerCapture(e.pointerId); window.addEventListener('pointermove', moveH, { passive: true }); window.addEventListener('pointerup', upH);
             });
         });
     },
@@ -292,14 +334,31 @@ const CodePen = {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&family=Geist:wght@100..900&display=swap" rel="stylesheet">
             <link rel="stylesheet" href="https://unpkg.com/splitting/dist/splitting.css" />
-            <style>
-                body { margin: 0; padding: 0; font-family: 'Poppins', sans-serif;}
-                ${css}
-            </style>
+            <style>body{margin:0;padding:15px;font-family:sans-serif;color:white;} ${css}</style>
+            <script>
+                (function() {
+                    const methods = ['log', 'warn', 'error', 'info'];
+                    methods.forEach(method => {
+                        const original = console[method];
+                        console[method] = function(...args) {
+                            window.parent.postMessage({ type: 'iframe-log', method, arguments: args }, '*');
+                            original.apply(console, args);
+                        };
+                    });
+                    window.addEventListener('message', (e) => {
+                        if (e.data.type === 'exec-command') {
+                            try {
+                                const result = eval(e.data.command);
+                                if (result !== undefined) console.log(result);
+                            } catch (err) { console.error(err); }
+                        }
+                    });
+                })();
+            <\/script>
         </head>
         <body>
             ${html}
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"><\/script>
+           <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"><\/script>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"><\/script>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"><\/script>
             <script src="https://unpkg.com/splitting/dist/splitting.min.js"><\/script>
@@ -310,14 +369,7 @@ const CodePen = {
             <\/script>
         </body>
         </html>`;
-
         previewEl.srcdoc = content; 
-    },
-
-    clear() {
-        Object.values(this.editors).forEach(ed => ed && ed.setValue("", 1));
-        localStorage.removeItem(this.STORAGE_KEY);
-        this.run();
     }
 };
 

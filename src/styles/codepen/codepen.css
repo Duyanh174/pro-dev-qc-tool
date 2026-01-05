@@ -338,3 +338,94 @@
     transition: none !important;
 }
 
+
+
+
+/* --- CONSOLE PANEL STYLES --- */
+.codepen-container-main .console-panel {
+    display: none; /* Mặc định ẩn */
+    flex-direction: column;
+    background: #1e1e1e;
+    border-top: 1px solid #333;
+    position: relative;
+    min-height: 35px; /* Chiều cao tối thiểu của thanh Tab */
+    transition: background 0.3s;
+}
+
+.codepen-container-main .resizer-console {
+    height: 4px;
+    background: transparent;
+    cursor: row-resize;
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    z-index: 20;
+}
+.codepen-container-main .resizer-console:hover { background: #007acc; }
+
+.codepen-container-main .console-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 12px;
+    background: #252526;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+    height: 35px;
+}
+
+.codepen-container-main .console-title {
+    font-size: 11px;
+    font-weight: bold;
+    color: #858585;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.codepen-container-main .console-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.codepen-container-main .console-logs {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 12px;
+    color: #ccc;
+}
+
+.codepen-container-main .log-item {
+    margin-bottom: 4px;
+    padding: 2px 0;
+    border-bottom: 1px solid #2a2a2a;
+}
+.codepen-container-main .log-error { color: #f48771; }
+.codepen-container-main .log-warn { color: #cca700; }
+
+.codepen-container-main .console-input-area {
+    display: flex;
+    padding: 5px 10px;
+    background: rgba(0,0,0,0.2);
+    border-top: 1px solid #333;
+    align-items: center;
+}
+.codepen-container-main .console-input-area::before {
+    content: ">";
+    color: #007acc;
+    margin-right: 8px;
+    font-weight: bold;
+}
+.codepen-container-main .console-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #fff;
+    outline: none;
+    font-family: inherit;
+    font-size: 12px;
+}
