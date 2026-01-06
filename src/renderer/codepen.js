@@ -5,13 +5,20 @@ const CodePen = {
     startY: 0,
     startTranslateY: 0,
     startConsoleHeight: 0,
-    autoRunEnabled: false, 
+    autoRunEnabled: false,
     debounceTimer: null,
     STORAGE_KEY: "codepen_user_data",
-    
-    editors: { html: null, css: null, js: null },
+
+    editors: {
+        html: null,
+        css: null,
+        js: null
+    },
     // Dữ liệu CDN
-    externalResources: { css: [], js: [] },
+    externalResources: {
+        css: [],
+        js: []
+    },
 
     init() {
         const container = document.getElementById('codepen-container');
@@ -101,7 +108,7 @@ const CodePen = {
         overlay.style.height = `calc(100vh - ${defaultY}px)`;
 
         const toggleBtn = document.getElementById('auto-run-toggle');
-        if(toggleBtn) {
+        if (toggleBtn) {
             toggleBtn.addEventListener('change', (e) => {
                 this.autoRunEnabled = e.target.checked;
                 if (this.autoRunEnabled) this.run();
@@ -109,7 +116,7 @@ const CodePen = {
         }
 
         const themeSelector = document.getElementById('theme-selector');
-        if(themeSelector) {
+        if (themeSelector) {
             themeSelector.addEventListener('change', (e) => {
                 const theme = e.target.value;
                 Object.values(this.editors).forEach(ed => ed && ed.setTheme(theme));
@@ -119,7 +126,10 @@ const CodePen = {
 
         this.initAce();
         this.updateScrollMargins(defaultY);
-        requestAnimationFrame(() => { this.initResizers(); this.syncThemeColors(); });
+        requestAnimationFrame(() => {
+            this.initResizers();
+            this.syncThemeColors();
+        });
     },
 
     // --- CDN MANAGER LOGIC ---
@@ -156,7 +166,7 @@ const CodePen = {
     renderCDNList() {
         const listEl = document.getElementById('cdn-list');
         let html = '';
-        
+
         ['css', 'js'].forEach(type => {
             this.externalResources[type].forEach((url, index) => {
                 html += `
@@ -200,7 +210,9 @@ const CodePen = {
         }
     },
 
-    clearConsole() { document.getElementById('console-logs').innerHTML = ''; },
+    clearConsole() {
+        document.getElementById('console-logs').innerHTML = '';
+    },
 
     appendLog(method, args) {
         const logContainer = document.getElementById('console-logs');
@@ -214,14 +226,17 @@ const CodePen = {
 
     executeConsoleCommand(cmd) {
         const iframe = document.getElementById('preview-window');
-        iframe.contentWindow.postMessage({ type: 'exec-command', command: cmd }, '*');
+        iframe.contentWindow.postMessage({
+            type: 'exec-command',
+            command: cmd
+        }, '*');
     },
 
     // --- PERSISTENCE ---
     saveToStorage() {
-        const data = { 
-            html: this.editors.html.getValue(), 
-            css: this.editors.css.getValue(), 
+        const data = {
+            html: this.editors.html.getValue(),
+            css: this.editors.css.getValue(),
             js: this.editors.js.getValue(),
             resources: this.externalResources // Lưu CDN
         };
@@ -235,20 +250,41 @@ const CodePen = {
         return data;
     },
 
-  
+
 
     formatCode(type) {
         const editor = this.editors[type];
         if (!editor || typeof prettier === 'undefined') return;
         try {
-            const formatted = prettier.format(editor.getValue(), { parser: type === "js" ? "babel" : (type === "css" ? "css" : "html"), plugins: prettierPlugins, tabWidth: 2 });
+            const formatted = prettier.format(editor.getValue(), {
+                parser: type === "js" ? "babel" : (type === "css" ? "css" : "html"),
+                plugins: prettierPlugins,
+                tabWidth: 2
+            });
             editor.setValue(formatted, 1);
-        } catch (err) { console.warn("Format error:", err); }
+        } catch (err) {
+            console.warn("Format error:", err);
+        }
     },
 
     initAce() {
         const savedData = this.loadFromStorage();
-        const config = { theme: "ace/theme/monokai", fontSize: "13px", useSoftTabs: true, showPrintMargin: false, showGutter: false, wrap: true, indentedSoftWrap: false, useWorker: false, animatedScroll: false, scrollbarHandler: "native", scrollPastEnd: 0, minLines: 50, maxLines: Infinity, showFoldWidgets: true };
+        const config = {
+            theme: "ace/theme/monokai",
+            fontSize: "13px",
+            useSoftTabs: true,
+            showPrintMargin: false,
+            showGutter: false,
+            wrap: true,
+            indentedSoftWrap: false,
+            useWorker: false,
+            animatedScroll: false,
+            scrollbarHandler: "native",
+            scrollPastEnd: 0,
+            minLines: 50,
+            maxLines: Infinity,
+            showFoldWidgets: true
+        };
         const setupEditor = (id, gutterId, mode, defaultValue) => {
             const editor = ace.edit(id);
             const gutterEl = document.getElementById(gutterId);
@@ -276,9 +312,18 @@ const CodePen = {
                 }
                 gutterEl.innerHTML = numbersHtml;
             };
-            gutterEl.onclick = (e) => { if (e.target.classList.contains('fold-icon')) { editor.session.toggleFold(parseInt(e.target.getAttribute('data-row'))); } };
-            editor.renderer.on('afterRender', () => { gutterEl.style.transform = `translateY(${-editor.renderer.getScrollTop()}px)`; });
-            editor.session.on('change', () => { updateLineNumbers(); this.triggerAutoRun(); });
+            gutterEl.onclick = (e) => {
+                if (e.target.classList.contains('fold-icon')) {
+                    editor.session.toggleFold(parseInt(e.target.getAttribute('data-row')));
+                }
+            };
+            editor.renderer.on('afterRender', () => {
+                gutterEl.style.transform = `translateY(${-editor.renderer.getScrollTop()}px)`;
+            });
+            editor.session.on('change', () => {
+                updateLineNumbers();
+                this.triggerAutoRun();
+            });
             editor.session.on('changeWrapLimit', updateLineNumbers);
             editor.session.on('changeFold', updateLineNumbers);
             setTimeout(updateLineNumbers, 100);
@@ -291,7 +336,9 @@ const CodePen = {
 
     updateScrollMargins(currentTranslateY) {
         const bottomReservedSpace = window.innerHeight - currentTranslateY;
-        Object.values(this.editors).forEach(editor => { if (editor) editor.renderer.setScrollMargin(10, bottomReservedSpace + 20, 10, 10); });
+        Object.values(this.editors).forEach(editor => {
+            if (editor) editor.renderer.setScrollMargin(10, bottomReservedSpace + 20, 10, 10);
+        });
     },
 
     triggerAutoRun() {
@@ -301,7 +348,11 @@ const CodePen = {
         this.debounceTimer = setTimeout(() => this.run(), 800);
     },
 
-    resizeEditors() { Object.values(this.editors).forEach(editor => { if (editor) editor.resize(); }); },
+    resizeEditors() {
+        Object.values(this.editors).forEach(editor => {
+            if (editor) editor.resize();
+        });
+    },
 
     initResizers() {
         const vHandle = document.getElementById('main-vertical-resizer');
@@ -318,8 +369,10 @@ const CodePen = {
             if (this.isDraggingV) {
                 const deltaY = e.clientY - this.startY;
                 let newY = this.startTranslateY + deltaY;
-                const minBound = 60; const maxBound = window.innerHeight - 60;
-                if (newY < minBound) newY = minBound; if (newY > maxBound) newY = maxBound;
+                const minBound = 60;
+                const maxBound = window.innerHeight - 60;
+                if (newY < minBound) newY = minBound;
+                if (newY > maxBound) newY = maxBound;
                 overlay.style.transform = `translateY(${newY}px)`;
                 overlay.style.height = `calc(100vh - ${newY}px)`;
                 this.updateScrollMargins(newY);
@@ -335,7 +388,8 @@ const CodePen = {
         };
 
         const up = () => {
-            this.isDraggingV = false; this.isDraggingC = false;
+            this.isDraggingV = false;
+            this.isDraggingC = false;
             blocker.style.display = 'none';
             mainContainer.classList.remove('is-dragging-global');
             window.removeEventListener('pointermove', move);
@@ -343,22 +397,30 @@ const CodePen = {
         };
 
         vHandle.addEventListener('pointerdown', (e) => {
-            this.isDraggingV = true; this.startY = e.clientY;
+            this.isDraggingV = true;
+            this.startY = e.clientY;
             const matrix = new WebKitCSSMatrix(window.getComputedStyle(overlay).transform);
             this.startTranslateY = matrix.m42;
-            blocker.style.display = 'block'; mainContainer.classList.add('is-dragging-global');
-            window.addEventListener('pointermove', move, { passive: true });
+            blocker.style.display = 'block';
+            mainContainer.classList.add('is-dragging-global');
+            window.addEventListener('pointermove', move, {
+                passive: true
+            });
             window.addEventListener('pointerup', up);
         });
 
         cResizer.addEventListener('pointerdown', (e) => {
-            this.isDraggingC = true; this.startY = e.clientY;
+            this.isDraggingC = true;
+            this.startY = e.clientY;
             this.startConsoleHeight = cPanel.offsetHeight;
-            blocker.style.display = 'block'; mainContainer.classList.add('is-dragging-global');
-            window.addEventListener('pointermove', move, { passive: true });
+            blocker.style.display = 'block';
+            mainContainer.classList.add('is-dragging-global');
+            window.addEventListener('pointermove', move, {
+                passive: true
+            });
             window.addEventListener('pointerup', up);
         });
-        
+
         const hResizers = document.querySelectorAll('.horizontal-resizer');
         hResizers.forEach((resizer, index) => {
             let startX, startLWidth, startRWidth, leftBox, rightBox, jsBox;
@@ -369,21 +431,44 @@ const CodePen = {
                 const newRWidth = startRWidth - deltaX;
                 if (newLWidth > 50 && (index === 0 ? newRWidth > 50 : true)) {
                     leftBox.style.flex = `0 0 ${newLWidth}px`;
-                    if (index === 0) { rightBox.style.flex = `0 0 ${newRWidth}px`; }
+                    if (index === 0) {
+                        rightBox.style.flex = `0 0 ${newRWidth}px`;
+                    }
                     this.resizeEditors();
                 }
             };
-            const upH = (ev) => { this.isDraggingH = false; blocker.style.display = 'none'; mainContainer.classList.remove('is-dragging-global'); resizer.releasePointerCapture(ev.pointerId); window.removeEventListener('pointermove', moveH); window.removeEventListener('pointerup', upH); };
+            const upH = (ev) => {
+                this.isDraggingH = false;
+                blocker.style.display = 'none';
+                mainContainer.classList.remove('is-dragging-global');
+                resizer.releasePointerCapture(ev.pointerId);
+                window.removeEventListener('pointermove', moveH);
+                window.removeEventListener('pointerup', upH);
+            };
             resizer.addEventListener('pointerdown', (e) => {
                 this.isDraggingH = true;
-                leftBox = resizer.previousElementSibling; rightBox = resizer.nextElementSibling;
+                leftBox = resizer.previousElementSibling;
+                rightBox = resizer.nextElementSibling;
                 jsBox = document.querySelectorAll('.editor-box')[2];
-                startX = e.clientX; startLWidth = leftBox.offsetWidth; startRWidth = rightBox.offsetWidth;
+                startX = e.clientX;
+                startLWidth = leftBox.offsetWidth;
+                startRWidth = rightBox.offsetWidth;
                 const allBoxes = document.querySelectorAll('.editor-box');
-                for(let i = 0; i <= index; i++) { allBoxes[i].style.flex = `0 0 ${allBoxes[i].offsetWidth}px`; }
-                if (index === 0) { jsBox.style.flex = `0 0 ${jsBox.offsetWidth}px`; } else { jsBox.style.flex = "1"; }
-                blocker.style.display = 'block'; mainContainer.classList.add('is-dragging-global');
-                resizer.setPointerCapture(e.pointerId); window.addEventListener('pointermove', moveH, { passive: true }); window.addEventListener('pointerup', upH);
+                for (let i = 0; i <= index; i++) {
+                    allBoxes[i].style.flex = `0 0 ${allBoxes[i].offsetWidth}px`;
+                }
+                if (index === 0) {
+                    jsBox.style.flex = `0 0 ${jsBox.offsetWidth}px`;
+                } else {
+                    jsBox.style.flex = "1";
+                }
+                blocker.style.display = 'block';
+                mainContainer.classList.add('is-dragging-global');
+                resizer.setPointerCapture(e.pointerId);
+                window.addEventListener('pointermove', moveH, {
+                    passive: true
+                });
+                window.addEventListener('pointerup', upH);
             });
         });
     },
@@ -450,12 +535,15 @@ const CodePen = {
         </body>
         </html>`;
 
-        previewEl.srcdoc = content; 
+        previewEl.srcdoc = content;
     },
 
     clear() {
         Object.values(this.editors).forEach(ed => ed && ed.setValue("", 1));
-        this.externalResources = { css: [], js: [] }; // Clear luôn CDN
+        this.externalResources = {
+            css: [],
+            js: []
+        }; // Clear luôn CDN
         localStorage.removeItem(this.STORAGE_KEY);
         this.run();
     }
