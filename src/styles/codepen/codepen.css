@@ -507,3 +507,64 @@
     font-weight: bold;
 }
 
+
+/* --- SPLIT VIEW MODE STYLES --- */
+.codepen-container-main.mode-split .split-layout-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    background: #121212;
+    position: relative;
+    height: calc(100% - 45px); /* Trừ header */
+}
+
+/* Cột trái */
+.split-editor-side {
+    display: flex;
+    flex-direction: column;
+    background: #1e1e1e;
+    overflow: hidden;
+}
+
+.split-tabs-header {
+    display: flex;
+    background: #252526;
+    padding: 5px 10px 0;
+    gap: 5px;
+    border-bottom: 1px solid #333;
+}
+
+.tab-btn-codepen-codepen {
+    background: #2d2d2d;
+    color: #858585;
+    border: none;
+    padding: 8px 15px;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+    text-transform: uppercase;
+}
+.tab-btn-codepen-codepen.active { background: #1e1e1e; color: #007acc; font-weight: bold; }
+
+.split-editor-container { flex: 1; position: relative; }
+.split-editor-container .editor-box {
+    position: absolute; inset: 0; display: none; border: none; border-radius: 0;
+}
+.split-editor-container .editor-box.active { display: flex; }
+
+/* Resizer chính */
+.main-split-resizer {
+    width: 6px; cursor: col-resize; background: #121212; z-index: 50; transition: background 0.2s;
+}
+.main-split-resizer:hover { background: #007acc; }
+
+/* Cột phải */
+.split-preview-side {
+    display: flex; flex-direction: column; flex: 1; overflow: hidden; background: #fff;
+}
+.split-preview-side .preview-frame-container { flex: 1; border: none; border-radius: 0; }
+.split-preview-side .console-panel { display: flex; height: 180px; }
+
+.codepen-container-main.mode-split .console-input-area{
+    padding: 5px 10px 20px 10px
+}
