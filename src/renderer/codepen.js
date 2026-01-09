@@ -1,146 +1,344 @@
 // --- THÔNG TIN SUPABASE (PHẢI THAY BẰNG KEY THẬT) ---
 const SUPABASE_URL = "https://pzqwnosbwznoksyervxk.supabase.co";
 const SUPABASE_KEY = "sb_publishable_HyyqMob18yaCwb-GPeakJA__XOO_YU3";
+const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dpn8hugjc/image/upload";
+const CLOUDINARY_PRESET = "codepen_preset";
 
 const CodePenStorage = {
     currentSnippets: [],
+    selectedImageFile: null,
+    currentEditId: null,
+    currentName: "Untitled",
 
-    // 1. Tương thích ngược với nút Save cũ
-    saveSnippet() {
-        this.openSaveModal();
+    // 1. Đồng bộ tên lên thanh Header
+    updateNameUI() {
+        const headerInput = document.getElementById('active-snippet-name');
+        if (headerInput) headerInput.value = this.currentName;
     },
 
-    // 2. Heartbeat: Đánh thức dự án tránh bị tạm ngưng 7 ngày
+    // 2. Heartbeat tránh ngắt kết nối API
     async keepAlive() {
         try {
             await fetch(`${SUPABASE_URL}/rest/v1/snippets?select=id&limit=1`, {
                 headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
             });
-            console.log("Supabase connection active: Project will not pause.");
         } catch (e) { console.warn("Heartbeat failed"); }
     },
 
-    // 3. Mở Modal nhập tên
+    // 3. LOGIC KÉO THẢ CHỤP ẢNH (Dùng modern-screenshot để tránh lỗi LCH)
+    startCaptureMode() {
+        const overlay = document.getElementById('capture-overlay');
+        const selection = document.getElementById('selection-box');
+        const previewFrame = document.getElementById('preview-window');
+        
+        // 1. Kiểm tra thư viện đã load chưa
+        if (typeof modernScreenshot === 'undefined') {
+            alert("Lỗi: Thư viện modernScreenshot vẫn chưa được tải!");
+            return;
+        }
+    
+        if (!overlay || !selection) { alert("Thiếu Capture Overlay!"); return; }
+    
+        document.getElementById('save-modal-overlay').style.display = 'none'; 
+        overlay.style.display = 'block';
+    
+        let startX, startY, isDragging = false;
+    
+        overlay.onmousedown = (e) => {
+            isDragging = true;
+            startX = e.offsetX; startY = e.offsetY;
+            selection.style.left = startX + 'px'; selection.style.top = startY + 'px';
+            selection.style.width = '0px'; selection.style.height = '0px';
+            selection.style.display = 'block';
+        };
+    
+        overlay.onmousemove = (e) => {
+            if (!isDragging) return;
+            selection.style.width = Math.abs(e.offsetX - startX) + 'px';
+            selection.style.height = Math.abs(e.offsetY - startY) + 'px';
+            selection.style.left = Math.min(startX, e.offsetX) + 'px';
+            selection.style.top = Math.min(startY, e.offsetY) + 'px';
+        };
+    
+        overlay.onmouseup = async () => {
+            isDragging = false;
+            const rect = selection.getBoundingClientRect();
+            overlay.style.display = 'none'; 
+            selection.style.display = 'none';
+    
+            if (rect.width < 5 || rect.height < 5) {
+                this.openSaveModal();
+                return;
+            }
+    
+            try {
+                const frameDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+                
+                // 2. Thực hiện chụp với tham số tối ưu hơn
+                const dataUrl = await modernScreenshot.domToJpeg(frameDoc.body, {
+                    quality: 0.8,
+                    width: rect.width,
+                    height: rect.height,
+                    features: {
+                        removeControlCharacters: true, // Loại bỏ ký tự lạ gây lỗi
+                    },
+                    style: {
+                        // Dịch chuyển vùng chụp khớp với vùng kéo thả
+                        transform: `translate(-${startX}px, -${startY}px)`,
+                        width: frameDoc.body.scrollWidth + 'px',
+                        height: frameDoc.body.scrollHeight + 'px'
+                    }
+                });
+    
+                this.selectedImageFile = dataUrl;
+                const imgPrev = document.getElementById('image-preview-element');
+                imgPrev.src = dataUrl;
+                imgPrev.style.display = 'block';
+    
+            } catch (error) {
+                // 3. In lỗi chi tiết ra Console để kiểm tra
+                console.error("DÉBUG LỖI CHỤP ẢNH:", error);
+                alert("Lỗi chụp ảnh: " + error.message); 
+            } finally {
+                this.openSaveModal(); 
+            }
+        };
+    },
+    // 4. MỞ MODAL LƯU
+    saveSnippet() { this.openSaveModal(); },
+
     openSaveModal() {
+        const headerInput = document.getElementById('active-snippet-name');
+        if (headerInput) this.currentName = headerInput.value.trim() || "Untitled";
+
         document.getElementById('save-modal-overlay').style.display = 'flex';
+        document.getElementById('snippet-name-input').value = this.currentName;
         document.getElementById('snippet-name-input').focus();
+
+        const editGroup = document.getElementById('edit-actions-group');
+        const newGroup = document.getElementById('new-actions-group');
+        const modalTitle = document.getElementById('modal-title');
+
+        if (this.currentEditId) {
+            // Nếu có ID (đang sửa code cũ): Hiện 2 lựa chọn
+            editGroup.style.display = 'flex';
+            newGroup.style.display = 'none';
+            modalTitle.innerText = "Bạn muốn làm gì với Code này?";
+        } else {
+            // Nếu không có ID (code mới): Chỉ hiện Lưu mới
+            editGroup.style.display = 'none';
+            newGroup.style.display = 'block';
+            modalTitle.innerText = "Lưu mới lên Cloud";
+        }
     },
 
     closeSaveModal() {
         document.getElementById('save-modal-overlay').style.display = 'none';
-        document.getElementById('snippet-name-input').value = '';
+        document.getElementById('image-preview-element').style.display = 'none';
+        this.selectedImageFile = null;
     },
 
-    // 4. Xác nhận lưu code lên Cloud
-    async confirmSave() {
-        const name = document.getElementById('snippet-name-input').value.trim();
-        if (!name) { alert("Vui lòng nhập tên!"); return; }
-
-        const rawData = {
-            html: CodePen.editors.html.getValue(),
-            css: CodePen.editors.css.getValue(),
-            js: CodePen.editors.js.getValue(),
-            resources: CodePen.externalResources
-        };
-
-        const compressedData = LZString.compressToEncodedURIComponent(JSON.stringify(rawData));
-
+    // 5. XÁC NHẬN LƯU (PATCH HOẶC POST)
+    async confirmSave(forceUpdate = false) {
+        const nameInput = document.getElementById('snippet-name-input');
+        const name = nameInput.value.trim() || "Untitled";
+    
+        // 1. Quản lý trạng thái UI: Loading cho các nút bấm
+        const activeButtons = forceUpdate 
+            ? document.querySelectorAll('#edit-actions-group .action-btn') 
+            : document.querySelectorAll('.action-btn.btn-success, #new-actions-group .action-btn');
+        
+        activeButtons.forEach(btn => { 
+            btn.disabled = true; 
+            btn.style.opacity = '0.5'; 
+            btn.dataset.originalText = btn.innerText;
+            btn.innerText = "Processing...";
+        });
+    
         try {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/snippets`, {
-                method: 'POST',
+            // 2. Xử lý ảnh: Upload lên Cloudinary nếu có ảnh mới
+            let imageUrl = document.getElementById('image-preview-element').src;
+            if (this.selectedImageFile) {
+                imageUrl = await this.uploadToCloudinary();
+            }
+    
+            // 3. Đóng gói và nén dữ liệu Editor
+            const rawData = {
+                html: CodePen.editors.html.getValue(),
+                css: CodePen.editors.css.getValue(),
+                js: CodePen.editors.js.getValue(),
+                resources: CodePen.externalResources
+            };
+            const compressedData = LZString.compressToEncodedURIComponent(JSON.stringify(rawData));
+    
+            // 4. QUYẾT ĐỊNH PHƯƠNG THỨC API
+            // forceUpdate = true: Chỉ khi có currentEditId mới PATCH. Nếu không có hoặc forceUpdate = false ->luôn POST
+            const isPatch = forceUpdate && this.currentEditId;
+            const method = isPatch ? 'PATCH' : 'POST';
+            
+            // Cấu hình URL: Nếu PATCH thì thêm filter ID, nếu POST thì gửi vào bảng gốc
+            const url = isPatch 
+                ? `${SUPABASE_URL}/rest/v1/snippets?id=eq.${this.currentEditId}` 
+                : `${SUPABASE_URL}/rest/v1/snippets`;
+    
+            const response = await fetch(url, {
+                method: method,
                 headers: {
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation' // Yêu cầu trả về dữ liệu sau khi lưu
                 },
-                body: JSON.stringify({ name: name, data: compressedData })
+                body: JSON.stringify({ 
+                    name: name, 
+                    data: compressedData, 
+                    image_url: imageUrl 
+                })
             });
-
+    
             if (response.ok) {
-                alert("Đã lưu lên Cloud thành công!");
+                const result = await response.json();
+                this.currentName = name;
+                
+                // 5. Cập nhật ID hiện tại:
+                // Nếu là POST (Lưu mới), lấy ID mới từ phản hồi của Supabase để các lần lưu tiếp theo có thể Cập nhật chính nó
+                if (!isPatch && result && result.length > 0) {
+                    this.currentEditId = result[0].id;
+                }
+    
+                // 6. Cập nhật UI và thông báo
+                this.updateNameUI();
+                alert(isPatch ? "✅ Đã cập nhật bản ghi cũ!" : "🚀 Đã tạo một bản lưu mới thành công!");
                 this.closeSaveModal();
+                this.loadLibrary(); 
+            } else {
+                const error = await response.json();
+                throw new Error(error.message || "Lỗi phản hồi từ Supabase");
             }
-        } catch (error) { console.error("Lỗi lưu:", error); }
+        } catch (e) { 
+            console.error("Save Error:", e); 
+            alert("❌ Lỗi hệ thống: " + e.message); 
+        } finally {
+            // Khôi phục trạng thái nút bấm
+            activeButtons.forEach(btn => { 
+                btn.disabled = false; 
+                btn.style.opacity = '1'; 
+                btn.innerText = btn.dataset.originalText || "Confirm";
+            });
+        }
     },
 
-    // 5. Tải thư viện từ Cloud
+    // 6. THƯ VIỆN & CHỈNH SỬA
     async loadLibrary() {
         try {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/snippets?select=*&order=created_at.desc`, {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/snippets?select=*&order=created_at.desc`, {
                 headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
             });
-            this.currentSnippets = await response.json();
+            this.currentSnippets = await res.json();
             this.renderLibraryUI();
         } catch (e) { alert("Lỗi tải thư viện"); }
     },
 
-    // 6. Xóa snippet (Logic DELETE)
-    async deleteSnippet(id, event) {
-        event.stopPropagation(); // Ngăn chặn việc load code khi đang bấm xóa
-        if (!confirm("Bạn có chắc muốn xóa đoạn code này, vì sẽ xoá vĩnh viễn khỏi DataBase?")) return;
+    editSnippet(id, event) {
+        event.stopPropagation();
+        const item = this.currentSnippets.find(s => s.id === id);
+        if (!item) return;
 
-        try {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/snippets?id=eq.${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                this.currentSnippets = this.currentSnippets.filter(s => s.id !== id);
-                this.renderLibraryUI(); // Vẽ lại danh sách ngay lập tức
-            }
-        } catch (e) { console.error("Lỗi xóa:", e); }
+        this.currentEditId = id; 
+        this.currentName = item.name;
+        this.updateNameUI();
+        
+        this.openSaveModal();
+        if (item.image_url) {
+            const imgPrev = document.getElementById('image-preview-element');
+            imgPrev.src = item.image_url; imgPrev.style.display = 'block';
+        }
+        
+        const libModal = document.querySelector('.library-modal-overlay');
+        if (libModal) libModal.remove();
     },
 
-    // 7. Render giao diện thư viện (HỢP NHẤT - CÓ NÚT XÓA)
     renderLibraryUI() {
-        const listHtml = this.currentSnippets.map(item => `
-            <div class="library-item" onclick="CodePenStorage.applySnippet('${item.id}')">
-                <span>${item.name}</span>
-                <div class="library-item-actions">
-                    <small>${new Date(item.created_at).toLocaleDateString()}</small>
-                    <span class="delete-btn-codepen" title="Xóa code" onclick="CodePenStorage.deleteSnippet('${item.id}', event)">🗑</span>
-                </div>
-            </div>
-        `).join('');
-
+        const listHtml = this.currentSnippets.map(item => {
+            // Tối ưu ảnh hiển thị để tiết kiệm băng thông
+            const optimizedUrl = item.image_url 
+                ? item.image_url.replace('/upload/', '/upload/w_160,h_100,c_fill,q_auto,f_auto/') 
+                : 'https://via.placeholder.com/80x50?text=No+Img';
+    
+            return `
+                <div class="library-item" onclick="CodePenStorage.applySnippet('${item.id}')">
+                    <img src="${optimizedUrl}" class="snippet-thumb" style="width:80px; height:50px; object-fit:cover; border-radius:4px;">
+                    <div class="library-item-info" style="flex:1; margin-left:10px;">
+                        <span style="font-weight:bold">${item.name}</span><br>
+                        <small style="color:#858585">${new Date(item.created_at).toLocaleDateString()}</small>
+                    </div>
+                    <div class="library-item-actions">
+                        <span class="edit-btn" style="cursor:pointer; margin-right:10px;" onclick="CodePenStorage.editSnippet('${item.id}', event)">✏️</span>
+                        <span class="delete-btn-codepen" style="cursor:pointer;" onclick="CodePenStorage.deleteSnippet('${item.id}', event)">🗑</span>
+                    </div>
+                </div>`;
+        }).join(''); 
+    
         let modal = document.querySelector('.library-modal-overlay');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.className = 'library-modal-overlay';
-            document.body.appendChild(modal);
+        if (!modal) { 
+            modal = document.createElement('div'); 
+            modal.className = 'library-modal-overlay'; 
+            document.body.appendChild(modal); 
         }
-
         modal.innerHTML = `
             <div class="library-modal">
-                <h3 style="margin-top:0; color:#007acc;">My Cloud Library</h3>
-                <div class="library-list">${listHtml || '<div style="color:#555">Trống...</div>'}</div>
+                <h3 style="margin-top:0; color:#007acc;">Team Library</h3>
+                <div class="library-list" style="max-height:400px; overflow-y:auto; margin-bottom:15px;">
+                    ${listHtml || '<div style="color:#555; text-align:center; padding:20px;">Trống...</div>'}
+                </div>
                 <div style="text-align:right">
-                    <button class="action-btn btn-secondary" onclick="this.closest('.library-modal-overlay').remove()">Đóng</button>
+                    <button class="action-btn btn-secondary" onclick="this.closest('.library-modal-overlay').remove()">Close</button>
                 </div>
             </div>`;
     },
 
-    // 8. Fill ngược code vào Editor
     applySnippet(id) {
         const item = this.currentSnippets.find(s => s.id === id);
         if (!item) return;
-
+        this.currentEditId = id; 
+        this.currentName = item.name;
+        this.updateNameUI();
         try {
             const data = JSON.parse(LZString.decompressFromEncodedURIComponent(item.data));
             CodePen.editors.html.setValue(data.html || "", -1);
             CodePen.editors.css.setValue(data.css || "", -1);
             CodePen.editors.js.setValue(data.js || "", -1);
             CodePen.externalResources = data.resources || { css: [], js: [] };
-
             CodePen.run();
             const modal = document.querySelector('.library-modal-overlay');
             if (modal) modal.remove();
-        } catch (e) { console.error("Lỗi phục hồi code:", e); }
+        } catch (e) { alert("Lỗi phục hồi code!"); }
+    },
+
+    async uploadToCloudinary() {
+        if (!this.selectedImageFile) return null;
+        const formData = new FormData();
+        formData.append("file", this.selectedImageFile);
+        formData.append("upload_preset", CLOUDINARY_PRESET);
+        const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
+        const data = await res.json();
+        return data.secure_url;
+    },
+
+    async deleteSnippet(id, event) {
+        event.stopPropagation();
+        if (!confirm("Xóa vĩnh viễn khỏi Database?")) return;
+        try {
+            await fetch(`${SUPABASE_URL}/rest/v1/snippets?id=eq.${id}`, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } });
+            this.currentSnippets = this.currentSnippets.filter(s => s.id !== id);
+            this.renderLibraryUI();
+        } catch (e) { console.error(e); }
+    },
+
+    resetToNew() { 
+        this.currentEditId = null; 
+        this.currentName = "Untitled"; 
+        this.updateNameUI(); 
     }
 };
 
@@ -174,7 +372,12 @@ const CodePen = {
 
     const headerHtml = `
             <div class="preview-actions">
-                <div class="brand-name">PRO EDITOR</div>
+                <div class="brand-name">
+            <input type="text" id="active-snippet-name" 
+                   value="${CodePenStorage.currentName}" 
+                   placeholder="Untitled"
+                   title="Click để đổi tên snippet">
+        </div>
                 <button class="action-btn btn-success" onclick="runCode()">▶ RUN</button>
                 <label class="toggle-control">
                     <input type="checkbox" id="auto-run-toggle" ${
@@ -223,7 +426,10 @@ const CodePen = {
                 <div class="preview-sliding-overlay" id="preview-overlay-container">
                     <div class="resizer-v-handle" id="main-vertical-resizer"><div class="handle-line"></div></div>
                     <div class="preview-content-wrapper">
-                        <div class="preview-frame-container"><div id="drag-blocker"></div><iframe id="preview-window"></iframe></div>
+                        <div id="capture-overlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.3); z-index:10000; cursor:crosshair;">
+        <div id="selection-box" style="display:none; position:absolute; border:2px dashed #007acc; background:rgba(0,122,204,0.1); pointer-events:none; z-index:10001;"></div>
+    </div>
+                            <div id="drag-blocker"></div><iframe id="preview-window"></iframe></div>
                         <div class="console-panel" id="console-panel">
                             <div class="resizer-console" id="console-resizer"></div>
                             <div class="console-header"><span class="console-title">Console</span><div class="console-actions"><button class="format-btn" onclick="CodePen.clearConsole()">Clear</button><button class="format-btn" onclick="CodePen.toggleConsole()">Close</button></div></div>
@@ -275,38 +481,37 @@ const CodePen = {
     }
 
    // Gộp cả CDN Modal và Save Modal vào cùng một lần nhúng
-container.insertAdjacentHTML(
-    "beforeend",
-    `
-    <div class="cdn-modal-overlay" id="cdn-modal-overlay">
-        <div class="cdn-modal">
-            <div class="cdn-modal-header">
-                <h3>External Resources</h3>
-                <button class="format-btn" onclick="CodePen.closeCDNModal()">✕</button>
-            </div>
-            <div class="cdn-input-group">
-                <input type="text" id="cdn-url" placeholder="URL...">
-                <button class="action-btn btn-success" onclick="CodePen.addResource()">Add</button>
-            </div>
-            <div class="cdn-list" id="cdn-list"></div>
-            <div style="text-align: right;">
-                <button class="action-btn btn-secondary" onclick="CodePen.closeCDNModal()">Done</button>
-            </div>
-        </div>
-    </div>
-
+   container.insertAdjacentHTML('beforeend', `
     <div class="save-modal-overlay" id="save-modal-overlay">
         <div class="save-modal">
-            <h3>Save to Cloud</h3>
-            <input type="text" id="snippet-name-input" placeholder="Tên đoạn code (VD: Navbar Animation)...">
-            <div class="save-modal-actions">
-                <button class="action-btn btn-secondary" onclick="CodePenStorage.closeSaveModal()">Cancel</button>
-                <button class="action-btn btn-success" onclick="CodePenStorage.confirmSave()">Save Cloud</button>
+            <h3 id="modal-title">Save to Cloud</h3>
+            
+            <div class="image-upload-section">
+                <img id="image-preview-element" style="width:100%; max-height:120px; object-fit:cover; display:none; border-radius:4px; margin-bottom:10px;">
+                <div style="display:flex; gap:10px; justify-content:center;">
+                    <button class="action-btn btn-capture" onclick="CodePenStorage.startCaptureMode()">📸 Capture Area</button>
+                    <input type="file" id="file-input" style="display:none" onchange="CodePenStorage.handleFileSelect(event)">
+                    <button class="action-btn" onclick="document.getElementById('file-input').click()">📁 Upload</button>
+                </div>
+            </div>
+
+            <input type="text" id="snippet-name-input" placeholder="Tên đoạn code...">
+
+            <div class="save-modal-actions" style="margin-top:15px; display:flex; justify-content:flex-end; gap:8px;">
+                <button class="action-btn btn-secondary" onclick="CodePenStorage.closeSaveModal()">Hủy</button>
+                
+                <div id="edit-actions-group" style="display:none; gap:8px;">
+                    <button class="action-btn btn-primary" onclick="CodePenStorage.confirmSave(false)">Lưu bản mới</button>
+                    <button class="action-btn btn-success" onclick="CodePenStorage.confirmSave(true)">Cập nhật bản cũ</button>
+                </div>
+
+                <div id="new-actions-group" style="display:block;">
+                    <button class="action-btn btn-success" onclick="CodePenStorage.confirmSave(false)">Lưu lên Cloud</button>
+                </div>
             </div>
         </div>
     </div>
-    `
-);
+`);
 
     this.setupCommonEvents();
     this.initAce();
@@ -394,6 +599,9 @@ container.insertAdjacentHTML(
       this.externalResources = { css: [], js: [] };
       localStorage.removeItem(this.STORAGE_KEY);
       this.clearConsole();
+      if (typeof CodePenStorage !== 'undefined') {
+        CodePenStorage.resetToNew();
+    }
       this.run();
     }
   },
