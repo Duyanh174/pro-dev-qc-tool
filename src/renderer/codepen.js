@@ -1,3 +1,149 @@
+// --- THÔNG TIN SUPABASE (PHẢI THAY BẰNG KEY THẬT) ---
+const SUPABASE_URL = "https://pzqwnosbwznoksyervxk.supabase.co";
+const SUPABASE_KEY = "sb_publishable_HyyqMob18yaCwb-GPeakJA__XOO_YU3";
+
+const CodePenStorage = {
+    currentSnippets: [],
+
+    // 1. Tương thích ngược với nút Save cũ
+    saveSnippet() {
+        this.openSaveModal();
+    },
+
+    // 2. Heartbeat: Đánh thức dự án tránh bị tạm ngưng 7 ngày
+    async keepAlive() {
+        try {
+            await fetch(`${SUPABASE_URL}/rest/v1/snippets?select=id&limit=1`, {
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+            });
+            console.log("Supabase connection active: Project will not pause.");
+        } catch (e) { console.warn("Heartbeat failed"); }
+    },
+
+    // 3. Mở Modal nhập tên
+    openSaveModal() {
+        document.getElementById('save-modal-overlay').style.display = 'flex';
+        document.getElementById('snippet-name-input').focus();
+    },
+
+    closeSaveModal() {
+        document.getElementById('save-modal-overlay').style.display = 'none';
+        document.getElementById('snippet-name-input').value = '';
+    },
+
+    // 4. Xác nhận lưu code lên Cloud
+    async confirmSave() {
+        const name = document.getElementById('snippet-name-input').value.trim();
+        if (!name) { alert("Vui lòng nhập tên!"); return; }
+
+        const rawData = {
+            html: CodePen.editors.html.getValue(),
+            css: CodePen.editors.css.getValue(),
+            js: CodePen.editors.js.getValue(),
+            resources: CodePen.externalResources
+        };
+
+        const compressedData = LZString.compressToEncodedURIComponent(JSON.stringify(rawData));
+
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/snippets`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: name, data: compressedData })
+            });
+
+            if (response.ok) {
+                alert("Đã lưu lên Cloud thành công!");
+                this.closeSaveModal();
+            }
+        } catch (error) { console.error("Lỗi lưu:", error); }
+    },
+
+    // 5. Tải thư viện từ Cloud
+    async loadLibrary() {
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/snippets?select=*&order=created_at.desc`, {
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+            });
+            this.currentSnippets = await response.json();
+            this.renderLibraryUI();
+        } catch (e) { alert("Lỗi tải thư viện"); }
+    },
+
+    // 6. Xóa snippet (Logic DELETE)
+    async deleteSnippet(id, event) {
+        event.stopPropagation(); // Ngăn chặn việc load code khi đang bấm xóa
+        if (!confirm("Bạn có chắc muốn xóa đoạn code này, vì sẽ xoá vĩnh viễn khỏi DataBase?")) return;
+
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/snippets?id=eq.${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                this.currentSnippets = this.currentSnippets.filter(s => s.id !== id);
+                this.renderLibraryUI(); // Vẽ lại danh sách ngay lập tức
+            }
+        } catch (e) { console.error("Lỗi xóa:", e); }
+    },
+
+    // 7. Render giao diện thư viện (HỢP NHẤT - CÓ NÚT XÓA)
+    renderLibraryUI() {
+        const listHtml = this.currentSnippets.map(item => `
+            <div class="library-item" onclick="CodePenStorage.applySnippet('${item.id}')">
+                <span>${item.name}</span>
+                <div class="library-item-actions">
+                    <small>${new Date(item.created_at).toLocaleDateString()}</small>
+                    <span class="delete-btn-codepen" title="Xóa code" onclick="CodePenStorage.deleteSnippet('${item.id}', event)">🗑</span>
+                </div>
+            </div>
+        `).join('');
+
+        let modal = document.querySelector('.library-modal-overlay');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.className = 'library-modal-overlay';
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="library-modal">
+                <h3 style="margin-top:0; color:#007acc;">My Cloud Library</h3>
+                <div class="library-list">${listHtml || '<div style="color:#555">Trống...</div>'}</div>
+                <div style="text-align:right">
+                    <button class="action-btn btn-secondary" onclick="this.closest('.library-modal-overlay').remove()">Đóng</button>
+                </div>
+            </div>`;
+    },
+
+    // 8. Fill ngược code vào Editor
+    applySnippet(id) {
+        const item = this.currentSnippets.find(s => s.id === id);
+        if (!item) return;
+
+        try {
+            const data = JSON.parse(LZString.decompressFromEncodedURIComponent(item.data));
+            CodePen.editors.html.setValue(data.html || "", -1);
+            CodePen.editors.css.setValue(data.css || "", -1);
+            CodePen.editors.js.setValue(data.js || "", -1);
+            CodePen.externalResources = data.resources || { css: [], js: [] };
+
+            CodePen.run();
+            const modal = document.querySelector('.library-modal-overlay');
+            if (modal) modal.remove();
+        } catch (e) { console.error("Lỗi phục hồi code:", e); }
+    }
+};
+
 const CodePen = {
   isDraggingV: false,
   isDraggingH: false,
@@ -19,6 +165,7 @@ const CodePen = {
 
   init() {
     this.render();
+    CodePenStorage.keepAlive();
   },
 
   render() {
@@ -56,8 +203,12 @@ const CodePen = {
                 <button class="action-btn btn-secondary" onclick="CodePen.openCDNModal()">🌐 CDN</button>
                 <button class="action-btn btn-secondary" onclick="CodePen.toggleConsole()">📟 Console</button>
                 <button class="action-btn btn-secondary" onclick="clearCode()">🗑 Clear</button>
+            </div>
+            <div class="save-data-wrap">
+                <button class="action-btn btn-secondary" onclick="CodePenStorage.openSaveModal()">☁️ Save Cloud</button>
+                <button class="action-btn btn-secondary" onclick="CodePenStorage.loadLibrary()">📚 Library</button>
             </div>`;
-
+                    
     if (this.viewMode === "standard") {
       container.innerHTML = `
             <div class="codepen-container-main mode-standard">
@@ -123,10 +274,39 @@ const CodePen = {
             </div>`;
     }
 
-    container.insertAdjacentHTML(
-      "beforeend",
-      `<div class="cdn-modal-overlay" id="cdn-modal-overlay"><div class="cdn-modal"><div class="cdn-modal-header"><h3>External Resources</h3><button class="format-btn" onclick="CodePen.closeCDNModal()">✕</button></div><div class="cdn-input-group"><input type="text" id="cdn-url" placeholder="URL..."><button class="action-btn btn-success" onclick="CodePen.addResource()">Add</button></div><div class="cdn-list" id="cdn-list"></div><div style="text-align: right;"><button class="action-btn btn-secondary" onclick="CodePen.closeCDNModal()">Done</button></div></div></div>`
-    );
+   // Gộp cả CDN Modal và Save Modal vào cùng một lần nhúng
+container.insertAdjacentHTML(
+    "beforeend",
+    `
+    <div class="cdn-modal-overlay" id="cdn-modal-overlay">
+        <div class="cdn-modal">
+            <div class="cdn-modal-header">
+                <h3>External Resources</h3>
+                <button class="format-btn" onclick="CodePen.closeCDNModal()">✕</button>
+            </div>
+            <div class="cdn-input-group">
+                <input type="text" id="cdn-url" placeholder="URL...">
+                <button class="action-btn btn-success" onclick="CodePen.addResource()">Add</button>
+            </div>
+            <div class="cdn-list" id="cdn-list"></div>
+            <div style="text-align: right;">
+                <button class="action-btn btn-secondary" onclick="CodePen.closeCDNModal()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="save-modal-overlay" id="save-modal-overlay">
+        <div class="save-modal">
+            <h3>Save to Cloud</h3>
+            <input type="text" id="snippet-name-input" placeholder="Tên đoạn code (VD: Navbar Animation)...">
+            <div class="save-modal-actions">
+                <button class="action-btn btn-secondary" onclick="CodePenStorage.closeSaveModal()">Cancel</button>
+                <button class="action-btn btn-success" onclick="CodePenStorage.confirmSave()">Save Cloud</button>
+            </div>
+        </div>
+    </div>
+    `
+);
 
     this.setupCommonEvents();
     this.initAce();
@@ -577,7 +757,7 @@ const CodePen = {
     const extJS = this.externalResources.js
       .map((url) => `<script src="${url}"><\/script>`)
       .join("\n");
-    const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="https://unpkg.com/splitting/dist/splitting.css" />${extCSS}<style>body{margin:0;padding:15px;font-family:'Poppins',sans-serif;color:white;} ${css}</style><script>(function(){['log','warn','error','info'].forEach(m=>{const o=console[m];console[m]=function(...a){window.parent.postMessage({type:'iframe-log',method:m,arguments:a},'*');o.apply(console,a);};});window.addEventListener('message',e=>{if(e.data.type==='exec-console'){try{const r=eval(e.data.command);if(r!==undefined)console.log(r);}catch(err){console.error(err);}}});})();<\/script></head><body>${html}<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"><\/script><script src="https://unpkg.com/splitting/dist/splitting.min.js"><\/script>${extJS}<script type="module">if(typeof Splitting!=='undefined')Splitting();if(typeof gsap!=='undefined')gsap.registerPlugin(ScrollTrigger,Draggable);${js}<\/script></body></html>`;
+    const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="https://unpkg.com/splitting/dist/splitting.css" />${extCSS}<style>body{margin:0;padding:15px;font-family:'Poppins',sans-serif;color:white;} ${css}</style><script>(function(){['log','warn','error','info'].forEach(m=>{const o=console[m];console[m]=function(...a){window.parent.postMessage({type:'iframe-log',method:m,arguments:a},'*');o.apply(console,a);};});window.addEventListener('message',e=>{if(e.data.type==='exec-console'){try{const r=eval(e.data.command);if(r!==undefined)console.log(r);}catch(err){console.error(err);}}});})();<\/script></head><body>${html}<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"><\/script><script src="https://unpkg.com/splitting/dist/splitting.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>${extJS}<script type="module">if(typeof Splitting!=='undefined')Splitting();if(typeof gsap!=='undefined')gsap.registerPlugin(ScrollTrigger,Draggable);${js}<\/script></body></html>`;
     previewEl.srcdoc = content;
   },
 };

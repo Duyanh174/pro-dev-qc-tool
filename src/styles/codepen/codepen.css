@@ -568,3 +568,101 @@
 .codepen-container-main.mode-split .console-input-area{
     padding: 5px 10px 20px 10px
 }
+
+
+.library-modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8); z-index: 2000;
+    display: flex; justify-content: center; align-items: center;
+}
+
+.library-modal {
+    width: 400px; background: #1e1e1e; border: 1px solid #333;
+    border-radius: 12px; padding: 20px; color: white;
+}
+
+.library-list {
+    max-height: 300px; overflow-y: auto; margin: 15px 0;
+}
+
+.library-item {
+    padding: 12px; background: #252526; margin-bottom: 8px;
+    border-radius: 6px; cursor: pointer; display: flex;
+    justify-content: space-between; align-items: center;
+    transition: background 0.2s;
+}
+
+.library-item:hover {
+    background: #007acc;
+}
+
+.library-item small { color: #858585; font-size: 10px; }
+.library-item:hover small { color: #eee; }
+
+/* --- SAVE MODAL STYLES --- */
+.save-data-wrap{
+       justify-content: flex-end;
+       gap: 10px;
+       position: absolute;
+       right: 10px;
+       bottom: 10px;
+       z-index: 9999;
+}
+
+.save-data-wrap .action-btn.btn-secondary{
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+.save-modal-overlay {
+    display: none; /* Mặc định ẩn */
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8); z-index: 3000;
+    justify-content: center; align-items: center;
+}
+
+.save-modal {
+    width: 350px; background: #1e1e1e; border: 1px solid #333;
+    border-radius: 12px; padding: 20px; color: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.save-modal h3 { margin: 0 0 15px 0; font-size: 16px; color: #007acc; }
+
+.save-modal input {
+    width: 100%; background: #2d2d2d; border: 1px solid #444;
+    color: #fff; padding: 10px; border-radius: 4px;
+    margin-bottom: 20px; outline: none; box-sizing: border-box;
+}
+
+.save-modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+.library-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #252526;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.library-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.delete-btn-codepen {
+    color: #f48771;
+    font-size: 16px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.delete-btn-codepen:hover {
+    background: rgba(244, 135, 113, 0.2);
+    transform: scale(1.2);
+}
