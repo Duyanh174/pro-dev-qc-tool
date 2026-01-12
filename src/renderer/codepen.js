@@ -10,6 +10,34 @@ const CodePenStorage = {
     currentEditId: null,
     currentName: "Untitled",
 
+    // --- HÀM BỔ SUNG: NÉN ẢNH TRƯỚC KHI LƯU ---
+    // Giảm kích thước ảnh về tối đa 800px và chất lượng 0.7 (JPEG)
+    async compressImage(base64Str, maxWidth = 800, quality = 0.7) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = base64Str;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Tính toán tỷ lệ thu nhỏ nếu ảnh quá lớn
+                if (width > maxWidth) {
+                    height = (maxWidth / width) * height;
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Xuất ra định dạng JPEG để tối ưu dung lượng hơn PNG
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+        });
+    },
+
     // 1. Đồng bộ tên lên thanh Header
     updateNameUI() {
         const headerInput = document.getElementById('active-snippet-name');
@@ -25,13 +53,12 @@ const CodePenStorage = {
         } catch (e) { console.warn("Heartbeat failed"); }
     },
 
-    // 3. LOGIC KÉO THẢ CHỤP ẢNH (Dùng modern-screenshot để tránh lỗi LCH)
+    // 3. LOGIC KÉO THẢ CHỤP ẢNH (Đã tích hợp Nén)
     startCaptureMode() {
         const overlay = document.getElementById('capture-overlay');
         const selection = document.getElementById('selection-box');
         const previewFrame = document.getElementById('preview-window');
         
-        // 1. Kiểm tra thư viện đã load chưa
         if (typeof modernScreenshot === 'undefined') {
             alert("Lỗi: Thư viện modernScreenshot vẫn chưa được tải!");
             return;
@@ -74,29 +101,27 @@ const CodePenStorage = {
             try {
                 const frameDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
                 
-                // 2. Thực hiện chụp với tham số tối ưu hơn
-                const dataUrl = await modernScreenshot.domToJpeg(frameDoc.body, {
-                    quality: 0.8,
+                // Chụp ảnh thô
+                const rawDataUrl = await modernScreenshot.domToJpeg(frameDoc.body, {
+                    quality: 0.9,
                     width: rect.width,
                     height: rect.height,
-                    features: {
-                        removeControlCharacters: true, // Loại bỏ ký tự lạ gây lỗi
-                    },
+                    features: { removeControlCharacters: true },
                     style: {
-                        // Dịch chuyển vùng chụp khớp với vùng kéo thả
                         transform: `translate(-${startX}px, -${startY}px)`,
                         width: frameDoc.body.scrollWidth + 'px',
                         height: frameDoc.body.scrollHeight + 'px'
                     }
                 });
     
-                this.selectedImageFile = dataUrl;
+                // --- THỰC HIỆN NÉN ẢNH SAU KHI CHỤP ---
+                this.selectedImageFile = await this.compressImage(rawDataUrl);
+
                 const imgPrev = document.getElementById('image-preview-element');
-                imgPrev.src = dataUrl;
+                imgPrev.src = this.selectedImageFile;
                 imgPrev.style.display = 'block';
     
             } catch (error) {
-                // 3. In lỗi chi tiết ra Console để kiểm tra
                 console.error("DÉBUG LỖI CHỤP ẢNH:", error);
                 alert("Lỗi chụp ảnh: " + error.message); 
             } finally {
@@ -104,6 +129,26 @@ const CodePenStorage = {
             }
         };
     },
+
+    // --- LOGIC XỬ LÝ FILE ẢNH UPLOAD (Đã tích hợp Nén) ---
+    handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const rawBase64 = event.target.result;
+            
+            // --- THỰC HIỆN NÉN ẢNH TRƯỚC KHI GÁN VÀO BIẾN TẠM ---
+            this.selectedImageFile = await this.compressImage(rawBase64);
+
+            const imgPrev = document.getElementById('image-preview-element');
+            imgPrev.src = this.selectedImageFile;
+            imgPrev.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    },
+
     // 4. MỞ MODAL LƯU
     saveSnippet() { this.openSaveModal(); },
 
@@ -120,12 +165,10 @@ const CodePenStorage = {
         const modalTitle = document.getElementById('modal-title');
 
         if (this.currentEditId) {
-            // Nếu có ID (đang sửa code cũ): Hiện 2 lựa chọn
             editGroup.style.display = 'flex';
             newGroup.style.display = 'none';
             modalTitle.innerText = "Bạn muốn làm gì với Code này?";
         } else {
-            // Nếu không có ID (code mới): Chỉ hiện Lưu mới
             editGroup.style.display = 'none';
             newGroup.style.display = 'block';
             modalTitle.innerText = "Lưu mới lên Cloud";
@@ -143,7 +186,6 @@ const CodePenStorage = {
         const nameInput = document.getElementById('snippet-name-input');
         const name = nameInput.value.trim() || "Untitled";
     
-        // 1. Quản lý trạng thái UI: Loading cho các nút bấm
         const activeButtons = forceUpdate 
             ? document.querySelectorAll('#edit-actions-group .action-btn') 
             : document.querySelectorAll('.action-btn.btn-success, #new-actions-group .action-btn');
@@ -156,13 +198,12 @@ const CodePenStorage = {
         });
     
         try {
-            // 2. Xử lý ảnh: Upload lên Cloudinary nếu có ảnh mới
             let imageUrl = document.getElementById('image-preview-element').src;
+            // Nếu có ảnh mới đã nén, sử dụng nó để upload
             if (this.selectedImageFile) {
                 imageUrl = await this.uploadToCloudinary();
             }
     
-            // 3. Đóng gói và nén dữ liệu Editor
             const rawData = {
                 html: CodePen.editors.html.getValue(),
                 css: CodePen.editors.css.getValue(),
@@ -171,12 +212,8 @@ const CodePenStorage = {
             };
             const compressedData = LZString.compressToEncodedURIComponent(JSON.stringify(rawData));
     
-            // 4. QUYẾT ĐỊNH PHƯƠNG THỨC API
-            // forceUpdate = true: Chỉ khi có currentEditId mới PATCH. Nếu không có hoặc forceUpdate = false ->luôn POST
             const isPatch = forceUpdate && this.currentEditId;
             const method = isPatch ? 'PATCH' : 'POST';
-            
-            // Cấu hình URL: Nếu PATCH thì thêm filter ID, nếu POST thì gửi vào bảng gốc
             const url = isPatch 
                 ? `${SUPABASE_URL}/rest/v1/snippets?id=eq.${this.currentEditId}` 
                 : `${SUPABASE_URL}/rest/v1/snippets`;
@@ -187,7 +224,7 @@ const CodePenStorage = {
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
                     'Content-Type': 'application/json',
-                    'Prefer': 'return=representation' // Yêu cầu trả về dữ liệu sau khi lưu
+                    'Prefer': 'return=representation'
                 },
                 body: JSON.stringify({ 
                     name: name, 
@@ -199,14 +236,9 @@ const CodePenStorage = {
             if (response.ok) {
                 const result = await response.json();
                 this.currentName = name;
-                
-                // 5. Cập nhật ID hiện tại:
-                // Nếu là POST (Lưu mới), lấy ID mới từ phản hồi của Supabase để các lần lưu tiếp theo có thể Cập nhật chính nó
                 if (!isPatch && result && result.length > 0) {
                     this.currentEditId = result[0].id;
                 }
-    
-                // 6. Cập nhật UI và thông báo
                 this.updateNameUI();
                 alert(isPatch ? "✅ Đã cập nhật bản ghi cũ!" : "🚀 Đã tạo một bản lưu mới thành công!");
                 this.closeSaveModal();
@@ -219,7 +251,6 @@ const CodePenStorage = {
             console.error("Save Error:", e); 
             alert("❌ Lỗi hệ thống: " + e.message); 
         } finally {
-            // Khôi phục trạng thái nút bấm
             activeButtons.forEach(btn => { 
                 btn.disabled = false; 
                 btn.style.opacity = '1'; 
@@ -260,7 +291,6 @@ const CodePenStorage = {
 
     renderLibraryUI() {
         const listHtml = this.currentSnippets.map(item => {
-            // Tối ưu ảnh hiển thị để tiết kiệm băng thông
             const optimizedUrl = item.image_url 
                 ? item.image_url.replace('/upload/', '/upload/w_160,h_100,c_fill,q_auto,f_auto/') 
                 : 'https://via.placeholder.com/80x50?text=No+Img';
@@ -318,6 +348,7 @@ const CodePenStorage = {
     async uploadToCloudinary() {
         if (!this.selectedImageFile) return null;
         const formData = new FormData();
+        // Gửi chuỗi base64 đã nén cực nhẹ
         formData.append("file", this.selectedImageFile);
         formData.append("upload_preset", CLOUDINARY_PRESET);
         const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });

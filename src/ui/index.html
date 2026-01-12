@@ -5,6 +5,7 @@
     <title>Pro Dev-QC Tool</title>
     <link rel="stylesheet" href="../styles/main.css">
     <link rel="stylesheet" href="../styles/codepen/codepen.css">
+    <link rel="stylesheet" href="../styles/format/format.css">
 </head>
 <body>
     <div class="app-container">
@@ -12,6 +13,7 @@
             <div class="nav-group">
                 <div class="nav-item active" id="nav-compiler" onclick="showTab('compiler')" title="Compiler">✨</div>
                 <div class="nav-item" id="nav-codepen" onclick="showTab('codepen')" title="CodePen Mode">📝</div>
+                <div class="nav-item" id="nav-format" onclick="showTab('format')" title="Format Code">🧹</div>
                 <div class="nav-item" id="nav-settings" onclick="showTab('settings')" title="Settings">⚙️</div>
             </div>
         </nav>
@@ -86,6 +88,11 @@
             <!-- tab codepen -->
             <div id="tab-codepen" class="tab-content" style="display:none">
                 <div id="codepen-container" class="codepen-wrapper"></div>
+            </div>
+
+            <!-- tab format -->
+            <div id="tab-format" class="tab-content" style="display:none">
+                <div id="format-container" class="format-wrapper"></div>
             </div>
 
 
@@ -170,5 +177,6 @@
 
     <script src="../renderer/renderer.js"></script>
     <script src="../renderer/codepen.js" ></script>
+    <script src="../renderer/format.js"></script>
 </body>
 </html>
