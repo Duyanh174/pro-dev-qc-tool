@@ -9,76 +9,73 @@ const CodePenStorage = {
     selectedImageFile: null,
     currentEditId: null,
     currentName: "Untitled",
+    
+    authCallback: null,
+    pendingSnippet: null,
 
-    // --- HÀM BỔ SUNG: NÉN ẢNH TRƯỚC KHI LƯU ---
-    // Giảm kích thước ảnh về tối đa 800px và chất lượng 0.7 (JPEG)
+    // --- HÀM NÉN ẢNH (GIỮ NGUYÊN) ---
     async compressImage(base64Str, maxWidth = 800, quality = 0.7) {
         return new Promise((resolve) => {
             const img = new Image();
             img.src = base64Str;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
-
-                // Tính toán tỷ lệ thu nhỏ nếu ảnh quá lớn
-                if (width > maxWidth) {
-                    height = (maxWidth / width) * height;
-                    width = maxWidth;
-                }
-
-                canvas.width = width;
-                canvas.height = height;
+                let width = img.width; let height = img.height;
+                if (width > maxWidth) { height = (maxWidth / width) * height; width = maxWidth; }
+                canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                
-                // Xuất ra định dạng JPEG để tối ưu dung lượng hơn PNG
                 resolve(canvas.toDataURL('image/jpeg', quality));
             };
         });
     },
 
-    // 1. Đồng bộ tên lên thanh Header
     updateNameUI() {
         const headerInput = document.getElementById('active-snippet-name');
-        if (headerInput) headerInput.value = this.currentName;
+        if (headerInput) headerInput.value = CodePenStorage.currentName;
     },
 
-    // 2. Heartbeat tránh ngắt kết nối API
-    async keepAlive() {
-        try {
-            await fetch(`${SUPABASE_URL}/rest/v1/snippets?select=id&limit=1`, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-            });
-        } catch (e) { console.warn("Heartbeat failed"); }
+    // --- XÁC THỰC MẬT KHẨU ---
+    requestAccess(snippet, callback) {
+        if (!snippet.password || snippet.password.trim() === "") return callback();
+        CodePenStorage.pendingSnippet = snippet;
+        CodePenStorage.authCallback = callback;
+        const overlay = document.getElementById('auth-modal-overlay');
+        document.getElementById('auth-msg').innerText = `Khóa bởi: ${snippet.author_name || 'Admin'}`;
+        document.getElementById('auth-pass-input').value = "";
+        overlay.style.display = 'flex';
+        document.getElementById('auth-pass-input').focus();
     },
 
-    // 3. LOGIC KÉO THẢ CHỤP ẢNH (Đã tích hợp Nén)
+    verifyAuth() {
+        const input = document.getElementById('auth-pass-input').value;
+        if (input === CodePenStorage.pendingSnippet.password) {
+            document.getElementById('auth-modal-overlay').style.display = 'none';
+            if (CodePenStorage.authCallback) CodePenStorage.authCallback();
+        } else { alert("Mật khẩu không chính xác!"); }
+    },
+
+    showForgotPass() { alert("Nhắn tin hoặc gặp Duy Anh để lấy lại pass =)))"); },
+
+    // --- LOGIC CAPTURE ---
     startCaptureMode() {
         const overlay = document.getElementById('capture-overlay');
         const selection = document.getElementById('selection-box');
         const previewFrame = document.getElementById('preview-window');
         
-        if (typeof modernScreenshot === 'undefined') {
-            alert("Lỗi: Thư viện modernScreenshot vẫn chưa được tải!");
-            return;
-        }
-    
-        if (!overlay || !selection) { alert("Thiếu Capture Overlay!"); return; }
-    
+        CodePenStorage.currentName = document.getElementById('snippet-name-input').value;
+        const authorVal = document.getElementById('author-name-input').value;
+        if (authorVal) localStorage.setItem('last_author', authorVal);
+
         document.getElementById('save-modal-overlay').style.display = 'none'; 
         overlay.style.display = 'block';
-    
+
         let startX, startY, isDragging = false;
-    
         overlay.onmousedown = (e) => {
-            isDragging = true;
-            startX = e.offsetX; startY = e.offsetY;
+            isDragging = true; startX = e.offsetX; startY = e.offsetY;
             selection.style.left = startX + 'px'; selection.style.top = startY + 'px';
-            selection.style.width = '0px'; selection.style.height = '0px';
-            selection.style.display = 'block';
+            selection.style.width = '0'; selection.style.height = '0'; selection.style.display = 'block';
         };
-    
         overlay.onmousemove = (e) => {
             if (!isDragging) return;
             selection.style.width = Math.abs(e.offsetX - startX) + 'px';
@@ -86,291 +83,245 @@ const CodePenStorage = {
             selection.style.left = Math.min(startX, e.offsetX) + 'px';
             selection.style.top = Math.min(startY, e.offsetY) + 'px';
         };
-    
         overlay.onmouseup = async () => {
             isDragging = false;
             const rect = selection.getBoundingClientRect();
-            overlay.style.display = 'none'; 
-            selection.style.display = 'none';
-    
-            if (rect.width < 5 || rect.height < 5) {
-                this.openSaveModal();
-                return;
-            }
-    
+            overlay.style.display = 'none'; selection.style.display = 'none';
+            if (rect.width < 5) { CodePenStorage.openSaveModal(); return; }
             try {
                 const frameDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
-                
-                // Chụp ảnh thô
-                const rawDataUrl = await modernScreenshot.domToJpeg(frameDoc.body, {
-                    quality: 0.9,
-                    width: rect.width,
-                    height: rect.height,
-                    features: { removeControlCharacters: true },
-                    style: {
-                        transform: `translate(-${startX}px, -${startY}px)`,
-                        width: frameDoc.body.scrollWidth + 'px',
-                        height: frameDoc.body.scrollHeight + 'px'
-                    }
+                const rawBase64 = await modernScreenshot.domToJpeg(frameDoc.body, {
+                    quality: 0.9, width: rect.width, height: rect.height,
+                    style: { transform: `translate(-${startX}px, -${startY}px)`, width: frameDoc.body.scrollWidth + 'px', height: frameDoc.body.scrollHeight + 'px' }
                 });
-    
-                // --- THỰC HIỆN NÉN ẢNH SAU KHI CHỤP ---
-                this.selectedImageFile = await this.compressImage(rawDataUrl);
-
-                const imgPrev = document.getElementById('image-preview-element');
-                imgPrev.src = this.selectedImageFile;
-                imgPrev.style.display = 'block';
-    
-            } catch (error) {
-                console.error("DÉBUG LỖI CHỤP ẢNH:", error);
-                alert("Lỗi chụp ảnh: " + error.message); 
-            } finally {
-                this.openSaveModal(); 
-            }
+                CodePenStorage.selectedImageFile = await CodePenStorage.compressImage(rawBase64);
+                document.getElementById('image-preview-element').src = CodePenStorage.selectedImageFile;
+                document.getElementById('image-preview-element').style.display = 'block';
+            } catch (e) { console.error(e); } finally { CodePenStorage.openSaveModal(); }
         };
     },
 
-    // --- LOGIC XỬ LÝ FILE ẢNH UPLOAD (Đã tích hợp Nén) ---
-    handleFileSelect(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const rawBase64 = event.target.result;
-            
-            // --- THỰC HIỆN NÉN ẢNH TRƯỚC KHI GÁN VÀO BIẾN TẠM ---
-            this.selectedImageFile = await this.compressImage(rawBase64);
-
-            const imgPrev = document.getElementById('image-preview-element');
-            imgPrev.src = this.selectedImageFile;
-            imgPrev.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    },
-
-    // 4. MỞ MODAL LƯU
-    saveSnippet() { this.openSaveModal(); },
-
+    // --- MỞ MODAL LƯU (Đã cập nhật hiển thị Thumbnail cũ) ---
+    saveSnippet() { CodePenStorage.openSaveModal(); },
     openSaveModal() {
         const headerInput = document.getElementById('active-snippet-name');
-        if (headerInput) this.currentName = headerInput.value.trim() || "Untitled";
+        // Chỉ lấy tên từ header nếu đang là lưu mới, nếu đang sửa thì giữ currentName
+        if (headerInput && !CodePenStorage.currentEditId) CodePenStorage.currentName = headerInput.value.trim() || "Untitled";
 
         document.getElementById('save-modal-overlay').style.display = 'flex';
-        document.getElementById('snippet-name-input').value = this.currentName;
-        document.getElementById('snippet-name-input').focus();
+        document.getElementById('snippet-name-input').value = CodePenStorage.currentName;
+        document.getElementById('author-name-input').value = localStorage.getItem('last_author') || '';
 
         const editGroup = document.getElementById('edit-actions-group');
         const newGroup = document.getElementById('new-actions-group');
-        const modalTitle = document.getElementById('modal-title');
+        const passWrapper = document.getElementById('password-wrapper');
+        const changePassBtn = document.getElementById('change-pass-btn');
+        const imgPrev = document.getElementById('image-preview-element');
 
-        if (this.currentEditId) {
-            editGroup.style.display = 'flex';
-            newGroup.style.display = 'none';
-            modalTitle.innerText = "Bạn muốn làm gì với Code này?";
+        if (CodePenStorage.currentEditId) {
+            editGroup.style.display = 'flex'; newGroup.style.display = 'none';
+            const item = CodePenStorage.currentSnippets.find(s => s.id === CodePenStorage.currentEditId);
+            
+            // --- CẬP NHẬT: Hiển thị thumbnail cũ nếu không có ảnh mới vừa chụp ---
+            if (item && item.image_url && !CodePenStorage.selectedImageFile) {
+                imgPrev.src = item.image_url;
+                imgPrev.style.display = 'block';
+            }
+
+            if (item && item.password) {
+                passWrapper.style.display = 'none'; changePassBtn.style.display = 'block';
+            } else {
+                passWrapper.style.display = 'block'; changePassBtn.style.display = 'none';
+            }
         } else {
-            editGroup.style.display = 'none';
-            newGroup.style.display = 'block';
-            modalTitle.innerText = "Lưu mới lên Cloud";
+            editGroup.style.display = 'none'; newGroup.style.display = 'block';
+            passWrapper.style.display = 'block'; changePassBtn.style.display = 'none';
         }
     },
 
-    closeSaveModal() {
-        document.getElementById('save-modal-overlay').style.display = 'none';
-        document.getElementById('image-preview-element').style.display = 'none';
-        this.selectedImageFile = null;
+    toggleChangePass() {
+        document.getElementById('password-wrapper').style.display = 'block';
+        document.getElementById('change-pass-btn').style.display = 'none';
+        document.getElementById('password-input').focus();
     },
 
-    // 5. XÁC NHẬN LƯU (PATCH HOẶC POST)
+    // --- XÁC NHẬN LƯU ---
     async confirmSave(forceUpdate = false) {
-        const nameInput = document.getElementById('snippet-name-input');
-        const name = nameInput.value.trim() || "Untitled";
-    
+        const name = document.getElementById('snippet-name-input').value.trim() || "Untitled";
+        const author = document.getElementById('author-name-input').value.trim();
+        let password = document.getElementById('password-input').value.trim();
+        
+        if (forceUpdate && document.getElementById('password-wrapper').style.display === 'none') {
+            const item = CodePenStorage.currentSnippets.find(s => s.id === CodePenStorage.currentEditId);
+            password = item.password;
+        }
+
+        if (!author) { alert("Vui lòng nhập Tên người dùng!"); return; }
+        localStorage.setItem('last_author', author);
+
         const activeButtons = forceUpdate 
             ? document.querySelectorAll('#edit-actions-group .action-btn') 
-            : document.querySelectorAll('.action-btn.btn-success, #new-actions-group .action-btn');
+            : document.querySelectorAll('#new-actions-group .action-btn');
         
         activeButtons.forEach(btn => { 
             btn.disabled = true; 
             btn.style.opacity = '0.5'; 
-            btn.dataset.originalText = btn.innerText;
-            btn.innerText = "Processing...";
+            btn.dataset.oldText = btn.innerText; 
+            btn.innerText = "Processing..."; 
         });
-    
+
         try {
+            // imageUrl mặc định lấy từ src của element (có thể là URL cũ hoặc Base64 mới)
             let imageUrl = document.getElementById('image-preview-element').src;
-            // Nếu có ảnh mới đã nén, sử dụng nó để upload
-            if (this.selectedImageFile) {
-                imageUrl = await this.uploadToCloudinary();
+            
+            // Nếu có tệp ảnh mới (selectedImageFile), ta mới upload lên Cloudinary
+            if (CodePenStorage.selectedImageFile) {
+                imageUrl = await CodePenStorage.uploadToCloudinary();
             }
-    
+
             const rawData = {
-                html: CodePen.editors.html.getValue(),
-                css: CodePen.editors.css.getValue(),
-                js: CodePen.editors.js.getValue(),
-                resources: CodePen.externalResources
+                html: CodePen.editors.html.getValue(), css: CodePen.editors.css.getValue(),
+                js: CodePen.editors.js.getValue(), resources: CodePen.externalResources
             };
             const compressedData = LZString.compressToEncodedURIComponent(JSON.stringify(rawData));
-    
-            const isPatch = forceUpdate && this.currentEditId;
+
+            const isPatch = forceUpdate && CodePenStorage.currentEditId;
             const method = isPatch ? 'PATCH' : 'POST';
-            const url = isPatch 
-                ? `${SUPABASE_URL}/rest/v1/snippets?id=eq.${this.currentEditId}` 
-                : `${SUPABASE_URL}/rest/v1/snippets`;
-    
+            const url = isPatch ? `${SUPABASE_URL}/rest/v1/snippets?id=eq.${CodePenStorage.currentEditId}` : `${SUPABASE_URL}/rest/v1/snippets`;
+
             const response = await fetch(url, {
                 method: method,
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation'
-                },
-                body: JSON.stringify({ 
-                    name: name, 
-                    data: compressedData, 
-                    image_url: imageUrl 
-                })
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+                body: JSON.stringify({ name, data: compressedData, image_url: imageUrl, author_name: author, password: password || null })
             });
-    
+
             if (response.ok) {
                 const result = await response.json();
-                this.currentName = name;
-                if (!isPatch && result && result.length > 0) {
-                    this.currentEditId = result[0].id;
-                }
-                this.updateNameUI();
-                alert(isPatch ? "✅ Đã cập nhật bản ghi cũ!" : "🚀 Đã tạo một bản lưu mới thành công!");
-                this.closeSaveModal();
-                this.loadLibrary(); 
+                CodePenStorage.currentName = name;
+                if (!isPatch && result && result.length > 0) CodePenStorage.currentEditId = result[0].id;
+                CodePenStorage.updateNameUI();
+                alert(isPatch ? "✅ Cập nhật thành công!" : "🚀 Lưu mới thành công!");
+                CodePenStorage.closeSaveModal(); 
+                CodePenStorage.loadLibrary(); 
             } else {
-                const error = await response.json();
-                throw new Error(error.message || "Lỗi phản hồi từ Supabase");
+                alert("Lỗi server, không thể lưu!");
             }
-        } catch (e) { 
-            console.error("Save Error:", e); 
-            alert("❌ Lỗi hệ thống: " + e.message); 
-        } finally {
+        } catch (e) { alert("Lỗi hệ thống!"); console.error(e); } 
+        finally { 
             activeButtons.forEach(btn => { 
                 btn.disabled = false; 
                 btn.style.opacity = '1'; 
-                btn.innerText = btn.dataset.originalText || "Confirm";
+                if (btn.dataset.oldText) btn.innerText = btn.dataset.oldText; 
             });
         }
     },
 
-    // 6. THƯ VIỆN & CHỈNH SỬA
+    // --- LIBRARY & CORE (GIỮ NGUYÊN) ---
     async loadLibrary() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/snippets?select=*&order=created_at.desc`, {
                 headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
             });
-            this.currentSnippets = await res.json();
-            this.renderLibraryUI();
+            CodePenStorage.currentSnippets = await res.json();
+            CodePenStorage.renderLibraryUI();
         } catch (e) { alert("Lỗi tải thư viện"); }
+    },
+
+    renderLibraryUI() {
+        const listHtml = CodePenStorage.currentSnippets.map(item => {
+            const thumbUrl = item.image_url ? item.image_url.replace('/upload/', '/upload/w_160,h_100,c_fill,q_auto,f_auto/') : 'https://via.placeholder.com/80x50?text=No+Img';
+            return `
+                <div class="library-item" onclick="CodePenStorage.applySnippet('${item.id}')">
+                    <img src="${thumbUrl}" class="snippet-thumb" style="width:80px; height:50px; object-fit:cover; border-radius:4px;">
+                    <div class="library-item-info" style="flex:1; margin-left:10px;">
+                        <span style="font-weight:bold">${item.name} ${item.password ? '🔒' : ''}</span><br>
+                        <small class="author-tag">👤 ${item.author_name || 'Duy Anh'}</small>
+                    </div>
+                    <div class="library-item-actions">
+                        <span class="edit-btn" onclick="CodePenStorage.editSnippet('${item.id}', event)">✏️</span>
+                        <span class="delete-btn-codepen" onclick="CodePenStorage.deleteSnippet('${item.id}', event)">🗑</span>
+                    </div>
+                </div>`;
+        }).join(''); 
+        let modal = document.querySelector('.library-modal-overlay');
+        if (!modal) { modal = document.createElement('div'); modal.className = 'library-modal-overlay'; document.body.appendChild(modal); }
+        modal.innerHTML = `<div class="library-modal"><h3>Team Library</h3><div class="library-list" style="max-height:400px; overflow-y:auto;">${listHtml || 'Trống...'}</div><div style="text-align:right; margin-top:10px;"><button class="action-btn btn-secondary" onclick="this.closest('.library-modal-overlay').remove()">Close</button></div></div>`;
+    },
+
+    applySnippet(id) {
+        const item = CodePenStorage.currentSnippets.find(s => s.id === id);
+        if (!item) return;
+        CodePenStorage.requestAccess(item, () => {
+            CodePenStorage.currentEditId = id; CodePenStorage.currentName = item.name; CodePenStorage.updateNameUI();
+            try {
+                const data = JSON.parse(LZString.decompressFromEncodedURIComponent(item.data));
+                CodePen.editors.html.setValue(data.html || "", -1);
+                CodePen.editors.css.setValue(data.css || "", -1);
+                CodePen.editors.js.setValue(data.js || "", -1);
+                CodePen.externalResources = data.resources || { css: [], js: [] };
+                CodePen.run();
+                const modal = document.querySelector('.library-modal-overlay'); if (modal) modal.remove();
+            } catch (e) { alert("Lỗi phục hồi!"); }
+        });
     },
 
     editSnippet(id, event) {
         event.stopPropagation();
-        const item = this.currentSnippets.find(s => s.id === id);
+        const item = CodePenStorage.currentSnippets.find(s => s.id === id);
         if (!item) return;
-
-        this.currentEditId = id; 
-        this.currentName = item.name;
-        this.updateNameUI();
-        
-        this.openSaveModal();
-        if (item.image_url) {
-            const imgPrev = document.getElementById('image-preview-element');
-            imgPrev.src = item.image_url; imgPrev.style.display = 'block';
-        }
-        
-        const libModal = document.querySelector('.library-modal-overlay');
-        if (libModal) libModal.remove();
+        CodePenStorage.requestAccess(item, () => {
+            CodePenStorage.currentEditId = id; CodePenStorage.currentName = item.name; CodePenStorage.updateNameUI();
+            CodePenStorage.openSaveModal();
+            // editSnippet vốn đã có logic hiện ảnh, nhưng nay đã được bổ trợ thêm bởi openSaveModal
+            if (item.image_url) {
+                const img = document.getElementById('image-preview-element');
+                img.src = item.image_url; img.style.display = 'block';
+            }
+            const lib = document.querySelector('.library-modal-overlay'); if (lib) lib.remove();
+        });
     },
 
-    renderLibraryUI() {
-        const listHtml = this.currentSnippets.map(item => {
-            const optimizedUrl = item.image_url 
-                ? item.image_url.replace('/upload/', '/upload/w_160,h_100,c_fill,q_auto,f_auto/') 
-                : 'https://via.placeholder.com/80x50?text=No+Img';
-    
-            return `
-                <div class="library-item" onclick="CodePenStorage.applySnippet('${item.id}')">
-                    <img src="${optimizedUrl}" class="snippet-thumb" style="width:80px; height:50px; object-fit:cover; border-radius:4px;">
-                    <div class="library-item-info" style="flex:1; margin-left:10px;">
-                        <span style="font-weight:bold">${item.name}</span><br>
-                        <small style="color:#858585">${new Date(item.created_at).toLocaleDateString()}</small>
-                    </div>
-                    <div class="library-item-actions">
-                        <span class="edit-btn" style="cursor:pointer; margin-right:10px;" onclick="CodePenStorage.editSnippet('${item.id}', event)">✏️</span>
-                        <span class="delete-btn-codepen" style="cursor:pointer;" onclick="CodePenStorage.deleteSnippet('${item.id}', event)">🗑</span>
-                    </div>
-                </div>`;
-        }).join(''); 
-    
-        let modal = document.querySelector('.library-modal-overlay');
-        if (!modal) { 
-            modal = document.createElement('div'); 
-            modal.className = 'library-modal-overlay'; 
-            document.body.appendChild(modal); 
-        }
-        modal.innerHTML = `
-            <div class="library-modal">
-                <h3 style="margin-top:0; color:#007acc;">Team Library</h3>
-                <div class="library-list" style="max-height:400px; overflow-y:auto; margin-bottom:15px;">
-                    ${listHtml || '<div style="color:#555; text-align:center; padding:20px;">Trống...</div>'}
-                </div>
-                <div style="text-align:right">
-                    <button class="action-btn btn-secondary" onclick="this.closest('.library-modal-overlay').remove()">Close</button>
-                </div>
-            </div>`;
-    },
-
-    applySnippet(id) {
-        const item = this.currentSnippets.find(s => s.id === id);
-        if (!item) return;
-        this.currentEditId = id; 
-        this.currentName = item.name;
-        this.updateNameUI();
-        try {
-            const data = JSON.parse(LZString.decompressFromEncodedURIComponent(item.data));
-            CodePen.editors.html.setValue(data.html || "", -1);
-            CodePen.editors.css.setValue(data.css || "", -1);
-            CodePen.editors.js.setValue(data.js || "", -1);
-            CodePen.externalResources = data.resources || { css: [], js: [] };
-            CodePen.run();
-            const modal = document.querySelector('.library-modal-overlay');
-            if (modal) modal.remove();
-        } catch (e) { alert("Lỗi phục hồi code!"); }
+    async deleteSnippet(id, event) {
+        event.stopPropagation();
+        const item = CodePenStorage.currentSnippets.find(s => s.id === id);
+        CodePenStorage.requestAccess(item, async () => {
+            if (!confirm("Xóa vĩnh viễn?")) return;
+            try {
+                await fetch(`${SUPABASE_URL}/rest/v1/snippets?id=eq.${id}`, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } });
+                CodePenStorage.currentSnippets = CodePenStorage.currentSnippets.filter(s => s.id !== id);
+                CodePenStorage.renderLibraryUI();
+            } catch (e) { console.error(e); }
+        });
     },
 
     async uploadToCloudinary() {
-        if (!this.selectedImageFile) return null;
+        if (!CodePenStorage.selectedImageFile) return null;
         const formData = new FormData();
-        // Gửi chuỗi base64 đã nén cực nhẹ
-        formData.append("file", this.selectedImageFile);
+        formData.append("file", CodePenStorage.selectedImageFile);
         formData.append("upload_preset", CLOUDINARY_PRESET);
         const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
         const data = await res.json();
         return data.secure_url;
     },
 
-    async deleteSnippet(id, event) {
-        event.stopPropagation();
-        if (!confirm("Xóa vĩnh viễn khỏi Database?")) return;
-        try {
-            await fetch(`${SUPABASE_URL}/rest/v1/snippets?id=eq.${id}`, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } });
-            this.currentSnippets = this.currentSnippets.filter(s => s.id !== id);
-            this.renderLibraryUI();
-        } catch (e) { console.error(e); }
+    handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            CodePenStorage.selectedImageFile = await CodePenStorage.compressImage(event.target.result);
+            document.getElementById('image-preview-element').src = CodePenStorage.selectedImageFile;
+            document.getElementById('image-preview-element').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
     },
 
-    resetToNew() { 
-        this.currentEditId = null; 
-        this.currentName = "Untitled"; 
-        this.updateNameUI(); 
-    }
+    closeSaveModal() {
+        document.getElementById('save-modal-overlay').style.display = 'none';
+        document.getElementById('image-preview-element').style.display = 'none';
+        CodePenStorage.selectedImageFile = null;
+    },
+    resetToNew() { CodePenStorage.currentEditId = null; CodePenStorage.currentName = "Untitled"; CodePenStorage.updateNameUI(); }
 };
 
 const CodePen = {
@@ -513,31 +464,87 @@ const CodePen = {
 
    // Gộp cả CDN Modal và Save Modal vào cùng một lần nhúng
    container.insertAdjacentHTML('beforeend', `
-    <div class="save-modal-overlay" id="save-modal-overlay">
-        <div class="save-modal">
-            <h3 id="modal-title">Save to Cloud</h3>
+    <div class="auth-modal-overlay" id="auth-modal-overlay">
+        <div class="auth-modal" style="border-top: 4px solid #007acc;">
+            <h4 style="margin:0 0 5px 0; color:#007acc; display:flex; align-items:center; gap:8px;">
+                🔒 Xác thực quyền truy cập
+            </h4>
+            <small id="auth-msg" style="color:#888; display:block; margin-bottom:15px; font-style: italic;"></small>
             
-            <div class="image-upload-section">
-                <img id="image-preview-element" style="width:100%; max-height:120px; object-fit:cover; display:none; border-radius:4px; margin-bottom:10px;">
+            <div style="margin-bottom: 15px;">
+                <span style="display:block; font-size:11px; color:#aaa; margin-bottom:5px; text-transform:uppercase; font-weight:bold;">
+                    Mật khẩu bảo vệ
+                </span>
+                <input type="password" id="auth-pass-input" placeholder="Nhập mật khẩu để mở..." 
+                       style="width:100%; padding:10px; background:#252526; border:1px solid #444; color:white; box-sizing:border-box; border-radius:4px; outline:none;">
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:10px; color:#555; cursor:pointer; text-decoration:underline;" onclick="CodePenStorage.showForgotPass()">Quên pass?</span>
+                <div style="display:flex; gap:8px;">
+                    <button class="action-btn btn-secondary" style="font-size:11px; padding:6px 12px;" onclick="document.getElementById('auth-modal-overlay').style.display='none'">Hủy</button>
+                    <button class="action-btn btn-success" style="font-size:11px; padding:6px 12px;" onclick="CodePenStorage.verifyAuth()">Xác nhận</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="save-modal-overlay" id="save-modal-overlay">
+        <div class="save-modal" style="width: 350px; border-top: 4px solid #28a745;">
+            <h3 id="modal-title" style="margin-top:0; margin-bottom:20px; font-size:18px; color:#eee;">Cloud Storage</h3>
+            
+            <div class="image-upload-section" style="border:1px dashed #444; padding:12px; margin-bottom:20px; text-align:center; border-radius:8px; background: rgba(255,255,255,0.02);">
+                <span style="display:block; font-size:10px; color:#888; margin-bottom:8px; text-transform:uppercase;">Ảnh đại diện (Preview)</span>
+                <img id="image-preview-element" style="width:100%; max-height:150px; object-fit:cover; display:none; border-radius:4px; margin-bottom:12px; border: 1px solid #333;">
                 <div style="display:flex; gap:10px; justify-content:center;">
-                    <button class="action-btn btn-capture" onclick="CodePenStorage.startCaptureMode()">📸 Capture Area</button>
-                    <input type="file" id="file-input" style="display:none" onchange="CodePenStorage.handleFileSelect(event)">
-                    <button class="action-btn" onclick="document.getElementById('file-input').click()">📁 Upload</button>
+                    <button class="action-btn btn-capture" onclick="CodePenStorage.startCaptureMode()" style="font-size:11px; flex:1;">📸 Chụp vùng chọn</button>
+                    <input type="file" id="file-input" style="display:none" accept="image/*" onchange="CodePenStorage.handleFileSelect(event)">
+                    <button class="action-btn" onclick="document.getElementById('file-input').click()" style="font-size:11px; flex:1;">📁 Tải ảnh lên</button>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <span style="display:block; font-size:11px; color:#007acc; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">
+                    Tên đoạn code
+                </span>
+                <input type="text" id="snippet-name-input" placeholder="Ví dụ: Navbar Animation..." 
+                       style="width:100%; padding:10px; background:#252526; border:1px solid #444; color:white; border-radius:4px; box-sizing:border-box;">
+            </div>
+            
+            <div style="display:grid; grid-template-columns: 1fr; gap:15px; margin-top:10px;">
+                <div>
+                    <span style="display:block; font-size:11px; color:#aaa; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">
+                        Tác giả
+                    </span>
+                    <input type="text" id="author-name-input" placeholder="Tên của bạn..." 
+                           style="width:100%; padding:10px; background:#252526; border:1px solid #444; color:white; border-radius:4px; box-sizing:border-box;">
+                </div>
+
+                <div id="password-section">
+                    <span style="display:block; font-size:11px; color:#aaa; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">
+                        Mật khẩu bảo vệ (Tùy chọn)
+                    </span>
+                    <div id="password-wrapper">
+                        <input type="password" id="password-input" placeholder="Để trống nếu muốn công khai..." 
+                               style="width:100%; padding:10px; background:#252526; border:1px solid #444; color:white; border-radius:4px; box-sizing:border-box;">
+                    </div>
+                    <div id="change-pass-btn" onclick="CodePenStorage.toggleChangePass()" 
+                         style="display:none; font-size:11px; color:#007acc; cursor:pointer; text-align:center; border:1px solid #007acc33; padding:8px; border-radius:4px; background: rgba(0,122,204,0.1); margin-top:5px;">
+                         🔄 Thay đổi mật khẩu hiện tại
+                    </div>
                 </div>
             </div>
 
-            <input type="text" id="snippet-name-input" placeholder="Tên đoạn code...">
-
-            <div class="save-modal-actions" style="margin-top:15px; display:flex; justify-content:flex-end; gap:8px;">
-                <button class="action-btn btn-secondary" onclick="CodePenStorage.closeSaveModal()">Hủy</button>
+            <div class="save-modal-actions" style="margin-top:25px; padding-top:15px; border-top:1px solid #333; display:flex; justify-content:flex-end; gap:10px;">
+                <button class="action-btn btn-secondary" style="padding:8px 16px;" onclick="CodePenStorage.closeSaveModal()">Hủy</button>
                 
-                <div id="edit-actions-group" style="display:none; gap:8px;">
-                    <button class="action-btn btn-primary" onclick="CodePenStorage.confirmSave(false)">Lưu bản mới</button>
-                    <button class="action-btn btn-success" onclick="CodePenStorage.confirmSave(true)">Cập nhật bản cũ</button>
+                <div id="edit-actions-group" style="display:none; gap:10px;">
+                    <button class="action-btn btn-primary" style="padding:8px 16px; background:#555;" onclick="CodePenStorage.confirmSave(false)">Lưu bản mới</button>
+                    <button class="action-btn btn-success" style="padding:8px 16px;" onclick="CodePenStorage.confirmSave(true)">Cập nhật bản cũ</button>
                 </div>
-
+                
                 <div id="new-actions-group" style="display:block;">
-                    <button class="action-btn btn-success" onclick="CodePenStorage.confirmSave(false)">Lưu lên Cloud</button>
+                    <button class="action-btn btn-success" style="padding:8px 20px;" onclick="CodePenStorage.confirmSave(false)">Lưu lên Cloud</button>
                 </div>
             </div>
         </div>

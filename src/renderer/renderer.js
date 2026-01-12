@@ -126,13 +126,24 @@ const App = {
 
 const Compiler = {
     async run(file, projectId) {
-        if (!file.endsWith('.scss') || path.basename(file).startsWith('_')) return;
         const project = App.projects.find(p => p.id === projectId);
         if (!project || !project.inputDir) return;
 
+        if (path.basename(file).startsWith('_')) {
+            this.recompileMainFiles(project.inputDir, projectId);
+            return; 
+        }
+
+        if (!file.endsWith('.scss')) return;
+
         try {
             const target = this.getOutPath(file, project);
-            const result = await sass.compileAsync(file, { style: 'expanded', sourceMap: true });
+            const result = await sass.compileAsync(file, { 
+                style: 'expanded', 
+                sourceMap: true,
+                loadPaths: [project.inputDir] 
+            });
+
             let finalCss = result.css;
             if (App.config.autoprefixer) {
                 const processed = await postcss([autoprefixer]).process(finalCss, { from: undefined });
@@ -140,13 +151,30 @@ const Compiler = {
             }
             fs.writeFileSync(target, finalCss);
             
-            // LOGIC: Đánh dấu lỗi cũ đã được fix
             this.markErrorAsFixed(project, file);
 
             UI.log(projectId, `Biên dịch thành công: ${path.basename(target)}`, 'success');
-            if (App.config.web) this.broadcast({ type: 'clear' });
+
+            if (App.config.web) {
+                this.broadcast({ type: 'reload' }); 
+                this.broadcast({ type: 'clear' });
+            }
         } catch (e) {
             this.handleError(projectId, file, e);
+        }
+    },
+
+    recompileMainFiles(dir, projectId) {
+        try {
+            const files = fs.readdirSync(dir);
+            files.forEach(f => {
+                const fp = path.join(dir, f);
+                if (f.endsWith('.scss') && !f.startsWith('_')) {
+                    this.run(fp, projectId);
+                }
+            });
+        } catch (e) {
+            console.error("Lỗi quét file recompile:", e);
         }
     },
 
@@ -183,14 +211,8 @@ const Compiler = {
 
     handleError(projectId, file, e) {
         const line = e.span ? e.span.start.line + 1 : 1;
-        
-        // BƯỚC 1: Loại bỏ mã màu ANSI (như [34m) để không bị mất text hoặc lỗi hiển thị
         let rawMsg = e.message.replace(/\x1B\[[0-9;]*[mK]/g, '');
-        
-        // BƯỚC 2: Lấy nội dung lỗi chính xác, tránh cắt nhầm
-        // Sass thường để nội dung lỗi trước ký tự '╷'
         const cleanMsg = rawMsg.split('╷')[0].trim(); 
-        
         const msg = `${path.basename(file)} (Dòng ${line}): ${cleanMsg}`;
         
         UI.log(projectId, msg, 'error', file, line);
