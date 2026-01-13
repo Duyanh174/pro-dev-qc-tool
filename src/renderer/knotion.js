@@ -126,20 +126,76 @@
             this.loadNote(newNote.id);
         },
 
+        openMoodFlow(tabName = 'emotions') {
+            // 1. Cập nhật trạng thái ID
+            this.activeNoteId = 'mood_flow_system';
+        
+            // 2. Xử lý UI Highlight ở Sidebar
+            // Xóa class 'active' khỏi tất cả các Note
+            document.querySelectorAll('.knot-item').forEach(el => el.classList.remove('active'));
+            // Thêm class 'active' vào mục Mood Flow
+            const mfItem = document.getElementById('mf-sidebar-item');
+            if (mfItem) mfItem.classList.add('active');
+        
+            // 3. Chuyển đổi vùng hiển thị bên phải
+            document.getElementById('editor-workspace').style.display = 'none';
+            document.getElementById('empty-state').style.display = 'none';
+            
+            let mfWorkspace = document.getElementById('moodflow-workspace');
+            if (!mfWorkspace) {
+                mfWorkspace = document.createElement('div');
+                mfWorkspace.id = 'moodflow-workspace';
+                mfWorkspace.className = 'editor-scroll-container';
+                document.querySelector('.knotion-editor-area').appendChild(mfWorkspace);
+            }
+            mfWorkspace.style.display = 'block';
+        
+            // 4. Gọi MoodFlow render nội dung
+            if (window.MoodFlow) {
+                window.MoodFlow.renderDashboard(mfWorkspace, tabName);
+            }
+            
+            // Ẩn chấm đỏ thông báo sau khi người dùng đã vào xem
+            const dot = document.getElementById('mood-notif-dot');
+            if (dot) dot.style.display = 'none';
+        },
+        
+        
         loadNote(id) {
+            // 1. XỬ LÝ GIAO DIỆN (UI SWITCH)
+            // Ẩn vùng làm việc của Mood Flow nếu đang mở
+            const mfWorkspace = document.getElementById('moodflow-workspace');
+            if (mfWorkspace) {
+                mfWorkspace.style.display = 'none';
+            }
+        
+            // Xóa Highlight của Mood Flow ở Sidebar để người dùng biết đã thoát chức năng này
+            const mfSidebarItem = document.getElementById('mf-sidebar-item');
+            if (mfSidebarItem) {
+                mfSidebarItem.classList.remove('active');
+            }
+        
+            // Hiện vùng Editor và ẩn trạng thái trống
+            document.getElementById('editor-workspace').style.display = 'block';
+            document.getElementById('empty-state').style.display = 'none';
+        
+            // 2. GIỮ NGUYÊN LOGIC CŨ CỦA BẠN
             this.activeNoteId = id;
             const note = this.data.notes.find(n => n.id === id);
             if (!note) return;
-
+        
             this.showWorkspace(true);
             const titleInp = document.getElementById('note-title');
             titleInp.value = note.title;
+            
+            // Logic lưu tiêu đề khi nhập liệu
             titleInp.oninput = () => {
                 note.title = titleInp.value;
                 this.renderNoteList();
                 this.saveData();
             };
-
+        
+            // Khởi tạo Editor và cập nhật danh sách Sidebar (đã bao gồm highlight note đang chọn)
             this.initEditor(note.content);
             this.renderNoteList();
         },

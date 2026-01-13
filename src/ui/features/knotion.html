@@ -1,9 +1,11 @@
 <div class="knotion-root">
     <aside class="knotion-sidebar" id="knotion-sidebar">
-        <div class="sidebar-section mood-zone">
-            <div class="section-label">MOOD TRACKING</div>
-            <div id="mood-pixel-container" class="mood-grid-mini">
-                <div class="mood-placeholder">Year in Pixels Loading...</div>
+        <div class="sidebar-section">
+            <div class="section-label">SYSTEM</div>
+            <div id="mf-sidebar-item" class="knot-item mood-trigger-item" onclick="Knotion.openMoodFlow()">
+                <span id="mood-notif-dot" class="red-dot" style="display:none"></span>
+                <span class="knot-icon">🧠</span>
+                <span class="knot-label">Mood Flow</span>
             </div>
         </div>
 
@@ -43,6 +45,11 @@
             <div class="editor-inner">
                 <input type="text" id="note-title" class="note-title-field" placeholder="Untitled" spellcheck="false">
                 <div id="editorjs"></div>
+            </div>
+        </div>
+        <div id="moodflow-workspace" class="editor-scroll-container" style="display: none;">
+            <div class="mf-loading-state">
+                <h3>Glow Mood đang nạp...</h3>
             </div>
         </div>
 
