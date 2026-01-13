@@ -13,6 +13,27 @@ const CodePenStorage = {
     authCallback: null,
     pendingSnippet: null,
 
+    // --- 1. HEARTBEAT (Hàm bị thiếu gây lỗi của bạn) ---
+    async keepAlive() {
+        console.log("📡 Heartbeat: Đang kiểm tra kết nối Supabase..."); // Thêm dòng này
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/snippets?select=id&limit=1`, {
+                headers: { 
+                    'apikey': SUPABASE_KEY, 
+                    'Authorization': `Bearer ${SUPABASE_KEY}` 
+                }
+            });
+            
+            if (res.ok) {
+                console.log("✅ Heartbeat: Kết nối ổn định."); // Thêm dòng này
+            } else {
+                console.warn("⚠️ Heartbeat: Supabase phản hồi lỗi.");
+            }
+        } catch (e) { 
+            console.error("❌ Heartbeat: Không thể kết nối tới API!", e); 
+        }
+    },
+
     // --- HÀM NÉN ẢNH (GIỮ NGUYÊN) ---
     async compressImage(base64Str, maxWidth = 800, quality = 0.7) {
         return new Promise((resolve) => {

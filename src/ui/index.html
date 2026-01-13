@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="../styles/main.css">
     <link rel="stylesheet" href="../styles/codepen/codepen.css">
     <link rel="stylesheet" href="../styles/format/format.css">
+    <link rel="stylesheet" href="../styles/knotion/knotion.css">
 </head>
 <body>
     <div class="app-container">
@@ -14,6 +15,7 @@
                 <div class="nav-item active" id="nav-compiler" onclick="showTab('compiler')" title="Compiler">✨</div>
                 <div class="nav-item" id="nav-codepen" onclick="showTab('codepen')" title="CodePen Mode">📝</div>
                 <div class="nav-item" id="nav-format" onclick="showTab('format')" title="Format Code">🧹</div>
+                <div class="nav-item" id="nav-knotion" onclick="showTab('knotion')" title="Knotion">🧠</div>
                 <div class="nav-item" id="nav-settings" onclick="showTab('settings')" title="Settings">⚙️</div>
             </div>
         </nav>
@@ -95,6 +97,10 @@
                 <div id="format-container" class="format-wrapper"></div>
             </div>
 
+            <!-- tab knotion -->
+            <div id="tab-knotion" class="tab-content" style="display:none">
+                <div id="knotion-container" class="knotion-wrapper"></div>
+            </div>
 
             <!-- tab setting -->
             <div id="tab-settings" class="tab-content" style="display:none">
@@ -175,8 +181,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/modern-screenshot/dist/index.js"></script>
 
+<!-- KNOTION -->
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/list@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/checklist@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/code@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/table@latest"></script>
+
     <script src="../renderer/renderer.js"></script>
     <script src="../renderer/codepen.js" ></script>
     <script src="../renderer/format.js"></script>
+    <script src="../renderer/knotion.js"></script>
 </body>
 </html>
