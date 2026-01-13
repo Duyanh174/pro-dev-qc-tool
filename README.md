@@ -30,6 +30,3 @@ pro-dev-qc-tool
 ```
 
 
-
-ok hướng dẫn tôi test các case của chức năng save modal này
-test case chi tiết bao gồm cách đặt tên, đặt tên tác giả luôn 
