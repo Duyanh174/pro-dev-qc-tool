@@ -3,23 +3,31 @@
         <div class="sidebar-section mood-zone">
             <div class="section-label">MOOD TRACKING</div>
             <div id="mood-pixel-container" class="mood-grid-mini">
-                <div class="mood-placeholder">Loading Pixels...</div>
+                <div class="mood-placeholder">Year in Pixels Loading...</div>
             </div>
+        </div>
+
+        <div class="sidebar-search">
+            <input type="text" id="knot-search" placeholder="Quick search..." oninput="Knotion.filterNotes()">
+        </div>
+
+        <div class="sidebar-section list-zone" id="pinned-section" style="display:none;">
+            <div class="section-label">📌 PINNED</div>
+            <div id="pinned-list" class="knot-items-container"></div>
         </div>
 
         <div class="sidebar-section list-zone">
             <div class="section-label">
-                <span>MY KNOTS</span>
-                <button class="add-btn" onclick="Knotion.createNote()" title="Create New Knot">+</button>
+                <span>PRIVATE</span>
+                <button class="add-btn" onclick="Knotion.createNote()" title="New Knot">+</button>
             </div>
-            <div id="knot-list" class="knot-items-container">
-                </div>
+            <div id="knot-list" class="knot-items-container"></div>
         </div>
 
-        <div class="sidebar-footer" onclick="Knotion.changeStoragePath()" title="Click to change storage directory">
+        <div class="sidebar-footer" onclick="Knotion.changeStoragePath()">
             <div class="path-info">
-                <span class="path-label">STORAGE:</span>
-                <span id="current-path-display" class="path-value">Loading...</span>
+                <span class="path-label">STORAGE PATH:</span>
+                <span id="current-path-display" class="path-value">...</span>
             </div>
             <button class="change-path-btn">📂</button>
         </div>
@@ -27,23 +35,23 @@
 
     <main class="knotion-editor-area">
         <header class="editor-nav">
-            <button class="nav-icon-btn" onclick="Knotion.toggleSidebar()" title="Toggle Sidebar">☰</button>
+            <button class="nav-icon-btn" onclick="Knotion.toggleSidebar()">☰</button>
             <div id="save-status" class="save-status"></div>
         </header>
 
-        <div id="editor-workspace" class="editor-scroll-container">
+        <div id="editor-workspace" class="editor-scroll-container" style="display: none;">
             <div class="editor-inner">
                 <input type="text" id="note-title" class="note-title-field" placeholder="Untitled" spellcheck="false">
                 <div id="editorjs"></div>
             </div>
         </div>
 
-        <div id="empty-state" class="empty-state-container" style="display: none;">
+        <div id="empty-state" class="empty-state-container">
             <div class="empty-content">
                 <div class="empty-icon">🧠</div>
-                <h3>Knotion Workspace</h3>
-                <p>Hãy chọn một ghi chú hoặc tạo mới để bắt đầu thắt nút kiến thức.</p>
-                <button class="btn-create-prompt" onclick="Knotion.createNote()">+ Create First Knot</button>
+                <h3>Your Knowledge Base</h3>
+                <p>Chọn một ghi chú hoặc tạo mới để bắt đầu thắt nút kiến thức.</p>
+                <button class="btn-create-prompt" onclick="Knotion.createNote()">+ Create New Knot</button>
             </div>
         </div>
     </main>
