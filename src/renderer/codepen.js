@@ -484,7 +484,32 @@ const CodePen = {
     }
 
    // Gộp cả CDN Modal và Save Modal vào cùng một lần nhúng
+   // Gộp cả Auth Modal, Save Modal và CDN Modal vào cùng một lần nhúng
    container.insertAdjacentHTML('beforeend', `
+    <div class="save-modal-overlay" id="cdn-modal-overlay" style="display:none;">
+        <div class="save-modal" style="width: 400px; border-top: 4px solid #007acc;">
+            <h3 style="margin-top:0; color:#eee;">🌐 External Resources (CDN)</h3>
+            <p style="font-size: 11px; color: #888; margin-bottom: 15px;">Thêm link CSS hoặc JS từ bên ngoài (Google Fonts, FontAwesome, v.v.)</p>
+            
+            <div style="margin-bottom: 15px;">
+                <span style="display:block; font-size:11px; color:#aaa; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">Link URL</span>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="cdn-url" placeholder="https://cdnjs.cloudflare.com/ajax/libs/..." 
+                           style="flex:1; padding:10px; background:#252526; border:1px solid #444; color:white; border-radius:4px;">
+                    <button class="action-btn btn-success" onclick="CodePen.addResource()">Add</button>
+                </div>
+            </div>
+
+            <span style="display:block; font-size:11px; color:#aaa; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">Danh sách tài nguyên đã thêm</span>
+            <div id="cdn-list" style="max-height: 150px; overflow-y: auto; background: #1a1a1a; border-radius: 4px; padding: 5px; border: 1px solid #333;">
+                </div>
+
+            <div class="save-modal-actions" style="margin-top:20px; text-align:right;">
+                <button class="action-btn btn-secondary" onclick="CodePen.closeCDNModal()">Close & Sync</button>
+            </div>
+        </div>
+    </div>
+
     <div class="auth-modal-overlay" id="auth-modal-overlay">
         <div class="auth-modal" style="border-top: 4px solid #007acc;">
             <h4 style="margin:0 0 5px 0; color:#007acc; display:flex; align-items:center; gap:8px;">
@@ -493,9 +518,7 @@ const CodePen = {
             <small id="auth-msg" style="color:#888; display:block; margin-bottom:15px; font-style: italic;"></small>
             
             <div style="margin-bottom: 15px;">
-                <span style="display:block; font-size:11px; color:#aaa; margin-bottom:5px; text-transform:uppercase; font-weight:bold;">
-                    Mật khẩu bảo vệ
-                </span>
+                <span style="display:block; font-size:11px; color:#aaa; margin-bottom:5px; text-transform:uppercase; font-weight:bold;">Mật khẩu bảo vệ</span>
                 <input type="password" id="auth-pass-input" placeholder="Nhập mật khẩu để mở..." 
                        style="width:100%; padding:10px; background:#252526; border:1px solid #444; color:white; box-sizing:border-box; border-radius:4px; outline:none;">
             </div>
@@ -525,45 +548,37 @@ const CodePen = {
             </div>
             
             <div style="margin-bottom: 15px;">
-                <span style="display:block; font-size:11px; color:#007acc; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">
-                    Tên đoạn code
-                </span>
+                <span style="display:block; font-size:11px; color:#007acc; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">Tên đoạn code</span>
                 <input type="text" id="snippet-name-input" placeholder="Ví dụ: Navbar Animation..." 
                        style="width:100%; padding:10px; background:#252526; border:1px solid #444; color:white; border-radius:4px; box-sizing:border-box;">
             </div>
             
             <div style="display:grid; grid-template-columns: 1fr; gap:15px; margin-top:10px;">
                 <div>
-                    <span style="display:block; font-size:11px; color:#aaa; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">
-                        Tác giả
-                    </span>
+                    <span style="display:block; font-size:11px; color:#aaa; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">Tác giả</span>
                     <input type="text" id="author-name-input" placeholder="Tên của bạn..." 
                            style="width:100%; padding:10px; background:#252526; border:1px solid #444; color:white; border-radius:4px; box-sizing:border-box;">
                 </div>
 
                 <div id="password-section">
-                    <span style="display:block; font-size:11px; color:#aaa; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">
-                        Mật khẩu bảo vệ (Tùy chọn)
-                    </span>
+                    <span style="display:block; font-size:11px; color:#aaa; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">Mật khẩu bảo vệ</span>
                     <div id="password-wrapper">
-                        <input type="password" id="password-input" placeholder="Để trống nếu muốn công khai..." 
+                        <input type="password" id="password-input" placeholder="Để trống nếu công khai..." 
                                style="width:100%; padding:10px; background:#252526; border:1px solid #444; color:white; border-radius:4px; box-sizing:border-box;">
                     </div>
                     <div id="change-pass-btn" onclick="CodePenStorage.toggleChangePass()" 
                          style="display:none; font-size:11px; color:#007acc; cursor:pointer; text-align:center; border:1px solid #007acc33; padding:8px; border-radius:4px; background: rgba(0,122,204,0.1); margin-top:5px;">
-                         🔄 Thay đổi mật khẩu hiện tại
+                         🔄 Thay đổi mật khẩu
                     </div>
                 </div>
             </div>
 
             <div class="save-modal-actions" style="margin-top:25px; padding-top:15px; border-top:1px solid #333; display:flex; justify-content:flex-end; gap:10px;">
                 <button class="action-btn btn-secondary" style="padding:8px 16px;" onclick="CodePenStorage.closeSaveModal()">Hủy</button>
-                
                 <div id="edit-actions-group" style="display:none; gap:10px;">
                     <button class="action-btn btn-primary" style="padding:8px 16px; background:#555;" onclick="CodePenStorage.confirmSave(false)">Lưu bản mới</button>
                     <button class="action-btn btn-success" style="padding:8px 16px;" onclick="CodePenStorage.confirmSave(true)">Cập nhật bản cũ</button>
                 </div>
-                
                 <div id="new-actions-group" style="display:block;">
                     <button class="action-btn btn-success" style="padding:8px 20px;" onclick="CodePenStorage.confirmSave(false)">Lưu lên Cloud</button>
                 </div>
