@@ -1,54 +1,169 @@
-.mf-module { padding: 20px; color: #37352f; font-family: -apple-system, sans-serif; }
-.mf-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; }
-.mf-title h2 { margin: 0; font-size: 19px; font-weight: 700; }
-.mf-title p { margin: 3px 0 0; font-size: 13px; color: #888; }
-.mf-header-btns { display: flex; gap: 8px; }
+/* Core Variables */
+:root {
+    --mf-bg: #ffffff; --mf-text: #1a1a1a; --mf-text-muted: #8e8e93;
+    --mf-border: #f2f2f7; --mf-primary: #000000;
+    --s1: #ff3b30; --s2: #ff9500; --s3: #ffcc00; --s4: #34c759; --s5: #008a00;
+    --skipped: #007aff; --today: #000000;
+}
 
-.mf-btn-main { background: #37352f; color: #fff; border: none; padding: 9px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; }
-.mf-btn-danger { background: #fff; color: #ff4d4f; border: 1px solid #ff4d4f; padding: 9px 15px; border-radius: 6px; cursor: pointer; }
+.mf-module { padding: 40px; background: var(--mf-bg); color: var(--mf-text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 
-/* Calendar Container */
-.mf-container { position: relative; max-width: 400px; margin: 0 auto; }
-.mf-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.mf-month-nav { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
-.mf-month-nav button { background: none; border: none; cursor: pointer; padding: 5px; }
-.mf-btn-view { background: none; border: 1px solid #ddd; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+/* Thang màu Pixel */
+.px-box.s1, .mf-tab.s1 { background: var(--s1) !important; color: #fff; }
+.px-box.s2, .mf-tab.s2 { background: var(--s2) !important; color: #fff; }
+.px-box.s3, .mf-tab.s3 { background: var(--s3) !important; color: #1a1a1a; }
+.px-box.s4, .mf-tab.s4 { background: var(--s4) !important; color: #1a1a1a; }
+.px-box.s5, .mf-tab.s5 { background: var(--s5) !important; color: #fff; }
+.px-box.skipped { background: var(--skipped) !important; color: #fff; }
+.px-box.today-empty { background: var(--today) !important; color: #fff !important; }
+.px-box.future { opacity: 0.2; cursor: default; }
+
+/* Header & Nav */
+.mf-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; }
+.mf-header h1 { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin: 0; }
+.mf-header p { color: var(--mf-text-muted); margin: 5px 0 0; }
+
+.mf-calendar-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.nav-month-selector { display: flex; align-items: center; gap: 15px; font-weight: 700; font-size: 16px; }
 
 /* Grid Pixels */
-.mf-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-.px-box { aspect-ratio: 1; border-radius: 3px; background: #e8e8e8; cursor: pointer; transition: 0.2s; }
-.px-box:hover { transform: scale(1.1); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-
-/* Mood Color Scale  */
-.px-box.today-empty { background: #000 !important; } /* Hôm nay chưa đánh giá */
-.px-box.s1 { background: #e03131; } /* Đỏ */
-.px-box.s2 { background: #f08c00; } /* Cam */
-.px-box.s3 { background: #fcc419; } /* Vàng */
-.px-box.s4 { background: #94d82d; } /* Xanh lá nhạt */
-.px-box.s5 { background: #339af0; } /* Blue (Thăng hoa) */
-
-/* Tooltip System */
-.mf-tooltip {
-    position: absolute; background: #fff; border: 1px solid #ddd; padding: 5px;
-    border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 100;
-    display: flex; flex-direction: column; min-width: 135px;
+.mf-container { position: relative; max-width: 420px; margin: 0 auto; }
+.mf-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+.px-box { 
+    position: relative; aspect-ratio: 1; border-radius: 8px; background: #f2f2f7; 
+    display: flex; align-items: center; justify-content: center; font-size: 12px;
+    font-weight: 700; color: rgba(0,0,0,0.15); transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
 }
-.mf-tooltip button {
-    background: none; border: none; text-align: left; padding: 10px 12px;
-    cursor: pointer; font-size: 12.5px; border-radius: 4px; color: #37352f;
-}
-.mf-tooltip button:hover { background: #f5f5f5; }
-.mf-tooltip .t-del { color: #ff4d4f; border-top: 1px solid #eee; margin-top: 4px; }
+.px-box:not(.future):hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.05); color: var(--mf-text); }
+.px-notif-dot { position: absolute; top: 0; right: 0; width: 10px; height: 10px; background: #ff3b30; border-radius: 0 8px 0 10px; }
 
-/* Modal Design */
-.mf-modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.mf-modal-box { background: #fff; padding: 30px; border-radius: 16px; width: 360px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-.mf-mood-grid { display: flex; justify-content: space-between; margin-top: 20px; }
-.mf-mood-grid button { font-size: 28px; background: #fff; border: 1px solid #eee; padding: 10px; border-radius: 10px; cursor: pointer; transition: 0.2s; }
-.mf-mood-grid button:hover { border-color: #37352f; background: #f9f9f9; }
-#mf-note { width: 100%; height: 90px; margin-top: 15px; border: 1px solid #ddd; border-radius: 8px; padding: 10px; resize: none; font-family: inherit; }
-.mf-modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
-.mf-btn-save { width: 100%; background: #37352f; color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 20px; }
-.mf-btn-pri { background: #37352f; color: #fff; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; }
-.mf-btn-sec { background: none; border: 1px solid #ddd; padding: 8px 16px; border-radius: 5px; cursor: pointer; }
-.mf-praise { font-size: 13px; color: #666; line-height: 1.5; margin-top: 10px; }
+/* MODAL REDESIGN */
+.mf-modal-overlay { 
+    position: fixed; inset: 0; background: rgba(255,255,255,0.8); 
+    backdrop-filter: blur(10px); z-index: 1000; display: flex; align-items: center; justify-content: center;
+}
+.mf-modal-card { 
+    background: #fff; width: 440px; border-radius: 30px; padding: 40px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.1); border: 1px solid #f2f2f7;
+}
+.modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+.modal-subtitle { font-size: 11px; font-weight: 800; color: var(--mf-text-muted); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+.modal-title { font-size: 24px; font-weight: 800; margin: 0; }
+.btn-close-modal { background: #f2f2f7; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 14px; color: #8e8e93; }
+
+/* Tabs & Body */
+.mf-tab-nav { display: flex; gap: 8px; margin-bottom: 25px; overflow-x: auto; padding-bottom: 5px; }
+.mf-tab { padding: 8px 16px; border-radius: 12px; font-size: 12px; font-weight: 700; border: 2px solid transparent; cursor: pointer; transition: 0.2s; }
+.mf-tab.active { border-color: var(--mf-primary); transform: translateY(-2px); }
+
+.mf-display-card { display: flex; align-items: center; gap: 20px; background: #fbfbfd; padding: 25px; border-radius: 20px; margin-bottom: 30px; }
+.mood-icon-wrap img { width: 60px; height: 60px; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.1)); }
+#view-time { font-size: 12px; font-weight: 800; color: #c7c7cc; }
+#view-note { margin: 5px 0 0; font-size: 16px; line-height: 1.5; font-weight: 500; }
+
+/* Entry Flow UI */
+.entry-label { font-size: 14px; font-weight: 700; color: #8e8e93; display: block; margin-bottom: 15px; }
+.mood-selection-wrapper { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.mood-item { 
+    background: #fff; border: 1px solid #f2f2f7; border-radius: 18px; padding: 12px; cursor: pointer; 
+    transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.mood-item:hover { border-color: var(--mf-primary); background: #fbfbfd; transform: translateY(-5px); }
+.mood-item img { width: 100%; max-width: 40px; }
+.mood-item span { font-size: 10px; font-weight: 700; color: #c7c7cc; }
+
+.mf-input-textarea { width: 100%; height: 120px; border: 2px solid #f2f2f7; border-radius: 18px; padding: 20px; font-size: 15px; resize: none; margin-top: 10px; transition: 0.2s; font-family: inherit; }
+.mf-input-textarea:focus { border-color: var(--mf-primary); outline: none; }
+
+/* Buttons */
+.mf-btn { padding: 14px 24px; border-radius: 16px; font-size: 14px; font-weight: 700; cursor: pointer; border: none; transition: 0.3s; }
+.mf-btn-primary { background: var(--mf-primary); color: #fff; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+.mf-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(0,0,0,0.15); }
+.mf-btn-secondary { background: #f2f2f7; color: var(--mf-text); }
+.mf-btn-outline-danger { background: transparent; border: 2px solid #ff3b30; color: #ff3b30; }
+.mf-btn-outline-danger:hover { background: #ff3b30; color: #fff; }
+.modal-actions-grid { display: flex; gap: 12px; width: 100%; }
+.modal-actions-grid .mf-btn { flex: 1; }
+
+/* Tooltip Hover */
+/* Cải tiến Tooltip */
+.mf-action-tooltip {
+    position: absolute;
+    background: #1c1c1e; /* Màu tối sang trọng hơn */
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 2000;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    pointer-events: auto; /* Cho phép click vào nút */
+    
+    /* Căn giữa thông minh */
+    transform: translate(-50%, -100%); 
+    margin-top: -12px; /* Khoảng cách so với pixel */
+    
+    white-space: nowrap; /* Không cho xuống dòng làm hỏng layout */
+    transition: opacity 0.2s, transform 0.2s;
+    display: none;
+}
+
+/* Thêm mũi tên nhỏ phía dưới tooltip */
+.mf-action-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: #1c1c1e transparent transparent transparent;
+}
+
+.mf-action-tooltip button {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Tắt hover cho pixel ngày đã qua */
+.px-box:not(.future) { cursor: pointer; transition: none; }
+.px-box:not(.future):hover { transform: none; box-shadow: none; color: inherit; }
+
+/* Giữ hover cho ngày tương lai */
+.px-box.future:hover { opacity: 0.5; }
+
+/* Cấu hình màu cho ngày cũ chưa chấm */
+.px-box.skipped { background: var(--skipped) !important; color: #fff !important; }
+
+/* Dropdown */
+.mf-view-dropdown {
+    padding: 6px 12px;
+    border-radius: 10px;
+    border: 2px solid var(--mf-border);
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+/* History List UI */
+.history-list { display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto; }
+.history-item {
+    display: flex; align-items: center; gap: 15px; padding: 15px;
+    background: #fbfbfd; border-radius: 15px; cursor: pointer; transition: 0.2s;
+}
+.history-item:hover { background: #f2f2f7; transform: translateX(5px); }
+.history-item img { width: 35px; height: 35px; }
+.history-item .time { font-size: 11px; font-weight: 800; color: var(--mf-text-muted); }
+.history-item .note-snippet { font-size: 14px; color: var(--mf-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Responsive Grid Year View */
+.mf-grid.year-view { grid-template-columns: repeat(20, 1fr); gap: 4px; }
+.mf-grid.year-view .px-box { font-size: 8px; border-radius: 4px; }

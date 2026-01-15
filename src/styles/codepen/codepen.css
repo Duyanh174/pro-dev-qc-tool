@@ -799,3 +799,28 @@
     border-radius: 4px; color: #aaa; margin-top: 4px; display: inline-block;
 }
 .lock-icon { color: #ffca28; margin-left: 5px; }
+
+/* Style cho nút chuyển đổi Mode */
+.mode-switch-container {
+    display: flex; gap: 5px; margin-bottom: 15px;
+    background: #1a1a1a; padding: 4px; border-radius: 6px;
+}
+.mode-btn {
+    flex: 1; padding: 8px; border: none; background: transparent;
+    color: #888; cursor: pointer; border-radius: 4px; font-size: 11px;
+    font-weight: bold; transition: 0.2s;
+}
+.mode-btn.active { background: #333; color: white; }
+.mode-btn.cloud.active { color: #28a745; box-shadow: 0 0 10px rgba(40, 167, 69, 0.2); }
+.mode-btn.local.active { color: #007acc; box-shadow: 0 0 10px rgba(0, 122, 204, 0.2); }
+
+/* Library Tabs */
+.library-tabs {
+    display: flex; border-bottom: 1px solid #333; margin-bottom: 15px;
+}
+.lib-tab {
+    padding: 10px 20px; cursor: pointer; color: #666; font-size: 12px;
+}
+.lib-tab.active {
+    color: white; border-bottom: 2px solid #007acc; background: rgba(255,255,255,0.05);
+}

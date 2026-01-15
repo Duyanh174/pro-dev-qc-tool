@@ -1,69 +1,99 @@
 <div class="mf-module">
     <header class="mf-header">
-        <div class="mf-title">
-            <h2>Mood Flow</h2>
-            <p>Lắng nghe và ghi nhận nhịp điệu cảm xúc.</p>
+        <div class="mf-header-content">
+            <h1>Mood Flow</h1>
+            <p>Kiến tạo sự thấu hiểu qua từng nhịp cảm xúc.</p>
         </div>
-        <div class="mf-actions">
-            <button class="mf-btn-main" onclick="MoodFlow.openModal('new')">Ghi nhận hôm nay</button>
-            <button class="mf-btn-danger" onclick="MoodFlow.deleteAll()">Xoá tất cả</button>
+        <div class="mf-header-actions">
+            <button class="mf-btn mf-btn-primary" onclick="MoodFlow.openModal(MoodFlow.getTodayKey())">
+                ✨ Ghi nhận hôm nay
+            </button>
+            <button class="mf-btn mf-btn-danger-ghost" onclick="MoodFlow.deleteAll()">Xoá tất cả</button>
         </div>
     </header>
 
     <div class="mf-container">
-        <div class="mf-nav">
-            <div class="mf-month-nav">
-                <button onclick="MoodFlow.changeMonth(-1)">◀</button>
+        <div class="mf-calendar-nav">
+            <div class="nav-month-selector">
+                <button class="nav-arrow" onclick="MoodFlow.changeMonth(-1)">❮</button>
                 <span id="mf-label">Tháng 01/2026</span>
-                <button onclick="MoodFlow.changeMonth(1)">▶</button>
+                <button class="nav-arrow" onclick="MoodFlow.changeMonth(1)">❯</button>
             </div>
-            <button class="mf-btn-view" onclick="MoodFlow.toggleView()">Đổi góc nhìn</button>
+            <div class="nav-view-actions">
+                <button class="btn-today" onclick="MoodFlow.goToToday()">Hôm nay</button>
+                <select class="mf-view-dropdown" onchange="MoodFlow.setViewMode(this.value)">
+                    <option value="month">Tháng</option>
+                    <option value="week">Tuần</option>
+                    <option value="year">Năm</option>
+                </select>
+            </div>
         </div>
 
         <div id="mf-grid" class="mf-grid"></div>
-
-        <div id="mf-tooltip" class="mf-tooltip" style="display:none">
-            <button onclick="MoodFlow.showUpdateOptions(true)">🔄 Cập nhật thêm</button>
-            <button class="t-del" onclick="MoodFlow.deleteDay()">🗑️ Xoá</button>
-        </div>
-
-        <div id="mf-update-menu" class="mf-tooltip sub-menu" style="display:none">
-            <button onclick="MoodFlow.openModal('reassess')">✏️ Đánh giá lại</button>
-            <button onclick="MoodFlow.openModal('add')">➕ Thêm sự kiện</button>
-        </div>
+        <div id="mf-action-tooltip" class="mf-action-tooltip" style="display:none"></div>
     </div>
 
     <div id="mf-modal" class="mf-modal-overlay" style="display:none">
-        <div class="mf-modal-box">
-            <div class="mf-modal-header">
-                <span id="mf-step-info">Bước 1/3</span>
-                <button onclick="MoodFlow.closeModal()">✕</button>
-            </div>
+        <div class="mf-modal-container">
+            <div class="mf-modal-card">
+                <header class="modal-header">
+                    <div class="modal-title-group">
+                        <span class="modal-subtitle" id="modal-step-tag">Mood Tracker</span>
+                        <h2 class="modal-title" id="modal-date-title">Ngày 13/01/2026</h2>
+                    </div>
+                    <button class="btn-close-modal" onclick="MoodFlow.closeModal()">✕</button>
+                </header>
 
-            <div id="mf-step-1" class="mf-step">
-                <h3>Bạn đang cảm thấy thế nào?</h3>
-                <div class="mf-mood-grid">
-                    <button onclick="MoodFlow.selectMood(1)">🆘</button>
-                    <button onclick="MoodFlow.selectMood(2)">😔</button>
-                    <button onclick="MoodFlow.selectMood(3)">😐</button>
-                    <button onclick="MoodFlow.selectMood(4)">🙂</button>
-                    <button onclick="MoodFlow.selectMood(5)">🌟</button>
+                <div class="modal-body">
+                    <div id="modal-history-state" class="state-anim" style="display:none">
+                        <div class="history-list" id="history-items"></div>
+                        <div class="modal-actions-grid mt-20">
+                            <button class="mf-btn mf-btn-primary" onclick="MoodFlow.startFlow('new')">Ghi nhận thêm</button>
+                        </div>
+                    </div>
+
+                    <div id="modal-view-state" class="state-anim" style="display:none">
+                        <div class="mf-display-card">
+                            <div class="mood-icon-wrap">
+                                <img id="view-img" src="" alt="Mood">
+                            </div>
+                            <div class="mood-info-wrap">
+                                <time id="view-time">10:00 AM</time>
+                                <p id="view-note"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-actions-grid">
+                            <button id="btn-view-history" class="mf-btn mf-btn-secondary" onclick="MoodFlow.showHistory()">Xem lịch sử</button>
+                            
+                            <button id="btn-back-to-history" class="mf-btn mf-btn-secondary" onclick="MoodFlow.showHistory()" style="display:none">Quay lại</button>
+                            
+                            <button class="mf-btn mf-btn-primary" onclick="MoodFlow.startFlow('edit')">Cập nhật</button>
+                            <button class="mf-btn mf-btn-outline-danger" onclick="MoodFlow.deleteActiveEntry()">Xoá</button>
+                        </div>
+                    </div>
+
+                    <div id="modal-entry-flow" class="state-anim" style="display:none">
+                        <div id="step-1" class="entry-step">
+                            <label class="entry-label">Bạn đang cảm thấy thế nào?</label>
+                            <div class="mood-selection-wrapper">
+                                <button class="mood-item" onclick="MoodFlow.nextStep(1)"><img src="../assets/alien01.png"><span>Tệ</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(2)"><img src="../assets/alien02.png"><span>Kém</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(3)"><img src="../assets/alien03.png"><span>Ổn</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(4)"><img src="../assets/alien04.png"><span>Tốt</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(5)"><img src="../assets/alien05.png"><span>Tuyệt</span></button>
+                            </div>
+                        </div>
+                        <div id="step-2" class="entry-step" style="display:none">
+                            <label class="entry-label">Điều gì đang diễn ra?</label>
+                            <textarea id="entry-note" class="mf-input-textarea" placeholder="Chia sẻ suy nghĩ của bạn tại đây..."></textarea>
+                            <div class="modal-actions-grid mt-20">
+                                <button class="mf-btn mf-btn-ghost" onclick="MoodFlow.backToStep1()">Quay lại</button>
+                                <button class="mf-btn mf-btn-primary" onclick="MoodFlow.finalize()">Lưu cảm xúc</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-
-            <div id="mf-step-2" class="mf-step" style="display:none">
-                <p id="mf-feedback" class="mf-feedback"></p>
-                <textarea id="mf-note" placeholder="Bạn muốn ghi lại điều gì không?"></textarea>
-                <div class="mf-modal-footer">
-                    <button class="mf-btn-sec" onclick="MoodFlow.showStep(1)">Quay lại</button>
-                    <button class="mf-btn-pri" onclick="MoodFlow.showStep(3)">Tiếp tục</button>
-                </div>
-            </div>
-
-            <div id="mf-step-3" class="mf-step" style="display:none">
-                <h3>Lời nhắn cho chính mình</h3>
-                <p class="mf-praise">Dù kết quả ra sao, việc bạn ghi chép lại đã là một nỗ lực tuyệt vời để yêu thương bản thân.</p>
-                <button class="mf-btn-save" onclick="MoodFlow.saveData()">Bạn đã làm rất tốt rồi - Hoàn tất</button>
             </div>
         </div>
     </div>
