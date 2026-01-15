@@ -1,35 +1,59 @@
 <div class="mf-module">
     <header class="mf-header">
         <div class="mf-header-content">
-            <h1>Mood Flow</h1>
-            <p>Kiến tạo sự thấu hiểu qua từng nhịp cảm xúc.</p>
-        </div>
-        <div class="mf-header-actions">
-            <button class="mf-btn mf-btn-primary" onclick="MoodFlow.openModal(MoodFlow.getTodayKey())">
-                ✨ Ghi nhận hôm nay
-            </button>
-            <button class="mf-btn mf-btn-danger-ghost" onclick="MoodFlow.deleteAll()">Xoá tất cả</button>
+            <h1>Mood Pixel</h1>
+            <div class="mf-birthday-card">
+                <div class="bd-label">🎂 Thiết lập ngày sinh:</div>
+                <div class="mf-birthday-inputs">
+                    <input type="text" id="bd-day" placeholder="DD" maxlength="2" oninput="MoodFlow.autoFocus(this, 'bd-month')">
+                    <span>/</span>
+                    <input type="text" id="bd-month" placeholder="MM" maxlength="2" oninput="MoodFlow.autoFocus(this, 'bd-year')">
+                    <span>/</span>
+                    <input type="text" id="bd-year" placeholder="YYYY" maxlength="4">
+                    <button class="mf-btn-save-bd" onclick="MoodFlow.saveBirthday()">Lưu</button>
+                </div>
+            </div>
         </div>
     </header>
+
+    <div class="mf-summary-grid">
+        <div class="summary-card" style="--c: var(--s5)">
+            <span class="dot"></span><label>TUYỆT VỜI</label><strong id="stat-5">0</strong>
+        </div>
+        <div class="summary-card" style="--c: var(--s4)">
+            <span class="dot"></span><label>VUI VẺ</label><strong id="stat-4">0</strong>
+        </div>
+        <div class="summary-card" style="--c: var(--s3)">
+            <span class="dot"></span><label>BÌNH THƯỜNG</label><strong id="stat-3">0</strong>
+        </div>
+        <div class="summary-card" style="--c: var(--s2)">
+            <span class="dot"></span><label>MỆT MỎI</label><strong id="stat-2">0</strong>
+        </div>
+        <div class="summary-card" style="--c: var(--s1)">
+            <span class="dot"></span><label>TỒI TỆ</label><strong id="stat-1">0</strong>
+        </div>
+    </div>
 
     <div class="mf-container">
         <div class="mf-calendar-nav">
             <div class="nav-month-selector">
-                <button class="nav-arrow" onclick="MoodFlow.changeMonth(-1)">❮</button>
+                <button class="nav-arrow" onclick="MoodFlow.changePage(-1)">❮</button>
                 <span id="mf-label">Tháng 01/2026</span>
-                <button class="nav-arrow" onclick="MoodFlow.changeMonth(1)">❯</button>
+                <button class="nav-arrow" onclick="MoodFlow.changePage(1)">❯</button>
             </div>
-            <div class="nav-view-actions">
-                <button class="btn-today" onclick="MoodFlow.goToToday()">Hôm nay</button>
-                <select class="mf-view-dropdown" onchange="MoodFlow.setViewMode(this.value)">
-                    <option value="month">Tháng</option>
-                    <option value="week">Tuần</option>
-                    <option value="year">Năm</option>
-                </select>
+            
+            <div class="mf-segmented-control">
+                <button class="seg-btn" id="seg-year" onclick="MoodFlow.setViewMode('year')">Năm</button>
+                <button class="seg-btn active" id="seg-month" onclick="MoodFlow.setViewMode('month')">Tháng</button>
+                <button class="seg-btn" id="seg-week" onclick="MoodFlow.setViewMode('week')">Tuần</button>
+                <div class="seg-glider"></div>
             </div>
         </div>
 
-        <div id="mf-grid" class="mf-grid"></div>
+        <div id="mf-grid-wrapper" class="mf-grid-scroll-container">
+             <div id="mf-grid" class="mf-grid month-view"></div>
+        </div>
+        
         <div id="mf-action-tooltip" class="mf-action-tooltip" style="display:none"></div>
     </div>
 
@@ -38,38 +62,34 @@
             <div class="mf-modal-card">
                 <header class="modal-header">
                     <div class="modal-title-group">
-                        <span class="modal-subtitle" id="modal-step-tag">Mood Tracker</span>
+                        <span class="modal-subtitle" id="modal-birthday-msg" style="color:#ff69b4; display:none">🎂 Chúc mừng sinh nhật bạn!</span>
                         <h2 class="modal-title" id="modal-date-title">Ngày 13/01/2026</h2>
                     </div>
                     <button class="btn-close-modal" onclick="MoodFlow.closeModal()">✕</button>
                 </header>
 
                 <div class="modal-body">
-                    <div id="modal-history-state" class="state-anim" style="display:none">
-                        <div class="history-list" id="history-items"></div>
-                        <div class="modal-actions-grid mt-20">
-                            <button class="mf-btn mf-btn-primary" onclick="MoodFlow.startFlow('new')">Ghi nhận thêm</button>
-                        </div>
-                    </div>
-
-                    <div id="modal-view-state" class="state-anim" style="display:none">
+                    <div id="modal-view-state" class="state-anim">
                         <div class="mf-display-card">
                             <div class="mood-icon-wrap">
                                 <img id="view-img" src="" alt="Mood">
                             </div>
                             <div class="mood-info-wrap">
-                                <time id="view-time">10:00 AM</time>
+                                <time id="view-time">--:--</time>
                                 <p id="view-note"></p>
                             </div>
                         </div>
-                        
                         <div class="modal-actions-grid">
-                            <button id="btn-view-history" class="mf-btn mf-btn-secondary" onclick="MoodFlow.showHistory()">Xem lịch sử</button>
-                            
-                            <button id="btn-back-to-history" class="mf-btn mf-btn-secondary" onclick="MoodFlow.showHistory()" style="display:none">Quay lại</button>
-                            
-                            <button class="mf-btn mf-btn-primary" onclick="MoodFlow.startFlow('edit')">Cập nhật</button>
-                            <button class="mf-btn mf-btn-outline-danger" onclick="MoodFlow.deleteActiveEntry()">Xoá</button>
+                            <button id="btn-show-history" class="mf-btn mf-btn-secondary" onclick="MoodFlow.showHistory()">📜 Lịch sử</button>
+                            <button class="mf-btn mf-btn-primary" onclick="MoodFlow.startFlow('new')">Cập nhật</button>
+                            <button class="mf-btn mf-btn-outline-danger" onclick="MoodFlow.deleteDayData()">Xoá ngày này</button>
+                        </div>
+                    </div>
+
+                    <div id="modal-history-state" class="state-anim" style="display:none">
+                        <div class="history-list" id="history-items"></div>
+                        <div class="modal-actions-grid mt-20">
+                            <button class="mf-btn mf-btn-secondary" onclick="MoodFlow.showDetail(null)">Quay lại</button>
                         </div>
                     </div>
 
@@ -77,16 +97,16 @@
                         <div id="step-1" class="entry-step">
                             <label class="entry-label">Bạn đang cảm thấy thế nào?</label>
                             <div class="mood-selection-wrapper">
-                                <button class="mood-item" onclick="MoodFlow.nextStep(1)"><img src="../assets/alien01.png"><span>Tệ</span></button>
-                                <button class="mood-item" onclick="MoodFlow.nextStep(2)"><img src="../assets/alien02.png"><span>Kém</span></button>
-                                <button class="mood-item" onclick="MoodFlow.nextStep(3)"><img src="../assets/alien03.png"><span>Ổn</span></button>
-                                <button class="mood-item" onclick="MoodFlow.nextStep(4)"><img src="../assets/alien04.png"><span>Tốt</span></button>
-                                <button class="mood-item" onclick="MoodFlow.nextStep(5)"><img src="../assets/alien05.png"><span>Tuyệt</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(5)"><img src="../assets/alien05.png"><span>Tuyệt vời</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(4)"><img src="../assets/alien04.png"><span>Vui vẻ</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(3)"><img src="../assets/alien03.png"><span>Bình thường</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(2)"><img src="../assets/alien02.png"><span>Mệt mỏi</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(1)"><img src="../assets/alien01.png"><span>Tồi tệ</span></button>
                             </div>
                         </div>
                         <div id="step-2" class="entry-step" style="display:none">
                             <label class="entry-label">Điều gì đang diễn ra?</label>
-                            <textarea id="entry-note" class="mf-input-textarea" placeholder="Chia sẻ suy nghĩ của bạn tại đây..."></textarea>
+                            <textarea id="entry-note" class="mf-input-textarea" placeholder="Chia sẻ suy nghĩ của bạn..."></textarea>
                             <div class="modal-actions-grid mt-20">
                                 <button class="mf-btn mf-btn-ghost" onclick="MoodFlow.backToStep1()">Quay lại</button>
                                 <button class="mf-btn mf-btn-primary" onclick="MoodFlow.finalize()">Lưu cảm xúc</button>

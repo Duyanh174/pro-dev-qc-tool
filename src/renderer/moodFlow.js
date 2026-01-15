@@ -1,252 +1,243 @@
 window.MoodFlow = {
     currentDate: new Date(),
-    viewMode: 'month', // Các chế độ: 'week', 'month', 'year'
+    viewMode: 'month',
     activeDate: null,
     activeIndex: 0,
     tempScore: 3,
 
-    /**
-     * Nạp giao diện và khởi tạo lịch
-     */
     renderDashboard(container) {
         const fs = require('fs');
         const path = require('path');
-        // Đảm bảo đường dẫn này trỏ đúng đến file HTML của bạn
         container.innerHTML = fs.readFileSync(path.join(__dirname, '../ui/features/moodFlow.html'), 'utf8');
+        this.loadBirthday();
         this.renderCalendar();
     },
 
-    /**
-     * Logic Xoá tất cả: Reset hoàn toàn object moods trong Knotion
-     */
-    deleteAll() {
-        if (confirm("Bạn có chắc chắn muốn xoá sạch toàn bộ dữ liệu cảm xúc? Hành động này không thể hoàn tác.")) {
-            window.Knotion.data.moods = {}; 
-            window.Knotion.saveData();      
-            this.renderCalendar();          
-            alert("Đã xoá sạch dữ liệu.");
+    autoFocus(el, nextId) {
+        if (el.value.length === el.maxLength) {
+            document.getElementById(nextId).focus();
         }
     },
 
-    /**
-     * Mở Modal: Ưu tiên hiển thị bản ghi mới nhất của ngày đó
-     */
-    openModal(dateKey) {
-        this.activeDate = dateKey;
-        const data = window.Knotion.data.moods[dateKey];
-        document.getElementById('modal-date-title').innerText = `Ngày ${dateKey}`;
-        document.getElementById('mf-modal').style.display = 'flex';
-
-        if (data && data.entries && data.entries.length > 0) {
-            // Hiển thị bản ghi cuối cùng, 'false' để kích hoạt kiểm tra hiện nút "Xem lịch sử"
-            this.showDetail(data.entries.length - 1, false); 
-        } else {
-            this.startFlow('new');
-        }
-    },
-
-    /**
-     * Hiển thị chi tiết một lần đánh giá
-     * @param {number} idx - Vị trí của entry trong mảng
-     * @param {boolean} fromHistory - Nếu true, hiện nút "Quay lại", nếu false, hiện nút "Xem lịch sử"
-     */
-    showDetail(idx, fromHistory = true) {
-        this.activeIndex = idx;
-        const data = window.Knotion.data.moods[this.activeDate];
-        const entry = data.entries[idx];
-        
-        document.getElementById('modal-step-tag').innerText = "Mood Detail";
-        document.getElementById('modal-history-state').style.display = 'none';
-        document.getElementById('modal-view-state').style.display = 'block';
-        document.getElementById('modal-entry-flow').style.display = 'none';
-
-        document.getElementById('view-img').src = `../assets/alien0${entry.score}.png`;
-        document.getElementById('view-time').innerText = `Ghi nhận lúc ${entry.time}`;
-        document.getElementById('view-note').innerText = entry.note || 'Lặng yên không ghi chú.';
-
-        const btnHistory = document.getElementById('btn-view-history');
-        const btnBack = document.getElementById('btn-back-to-history');
-
-        if (fromHistory) {
-            btnHistory.style.display = 'none';
-            btnBack.style.display = 'block';
-        } else {
-            // SỬA: Kiểm tra data.entries tồn tại và có từ 2 bản ghi trở lên
-            btnHistory.style.display = (data && data.entries && data.entries.length > 1) ? 'block' : 'none';
-            btnBack.style.display = 'none';
-        }
-    },
-
-    /**
-     * Hiển thị danh sách lịch sử đánh giá trong ngày (Mới nhất lên đầu)
-     */
-    showHistory() {
-        document.getElementById('modal-step-tag').innerText = "Mood History";
-        document.getElementById('modal-history-state').style.display = 'block';
-        document.getElementById('modal-view-state').style.display = 'none';
-        document.getElementById('modal-entry-flow').style.display = 'none';
-
-        const data = window.Knotion.data.moods[this.activeDate];
-        const list = document.getElementById('history-items');
-        list.innerHTML = '';
-
-        // Đảo ngược mảng để hiện cái mới nhất lên trên
-        [...data.entries].reverse().forEach((entry, reverseIdx) => {
-            const originalIdx = data.entries.length - 1 - reverseIdx;
-            const item = document.createElement('div');
-            item.className = 'history-item';
-            item.innerHTML = `
-                <img src="../assets/alien0${entry.score}.png">
-                <div>
-                    <div class="time">${entry.time}</div>
-                    <div class="note-snippet">${entry.note || 'Không có ghi chú'}</div>
-                </div>
-            `;
-            item.onclick = () => this.showDetail(originalIdx, true);
-            list.appendChild(item);
-        });
-    },
-
-    /**
-     * Bắt đầu luồng nhập liệu cảm xúc
-     */
-    startFlow(mode) {
-        document.getElementById('modal-step-tag').innerText = mode === 'edit' ? "Updating Mood" : "New Mood";
-        document.getElementById('modal-history-state').style.display = 'none';
-        document.getElementById('modal-view-state').style.display = 'none';
-        document.getElementById('modal-entry-flow').style.display = 'block';
-
-        if (mode === 'edit') {
-            const entry = window.Knotion.data.moods[this.activeDate].entries[this.activeIndex];
-            this.tempScore = entry.score;
-            document.getElementById('entry-note').value = entry.note;
-        } else {
-            this.tempScore = 3;
-            document.getElementById('entry-note').value = '';
-            const data = window.Knotion.data.moods[this.activeDate];
-            this.activeIndex = data ? data.entries.length : 0;
-        }
-        this.showStep(1);
-    },
-
-    /**
-     * Lưu dữ liệu cảm xúc
-     */
-    finalize() {
-        const note = document.getElementById('entry-note').value;
-        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        if (!window.Knotion.data.moods[this.activeDate]) {
-            window.Knotion.data.moods[this.activeDate] = { entries: [] };
-        }
-        
-        const dayData = window.Knotion.data.moods[this.activeDate];
-        const entryObj = { score: this.tempScore, note, time };
-
-        // SỬA: Luôn sử dụng .push() để thêm bản ghi mới vào mảng thay vì gán theo index
-        // Điều này đảm bảo mỗi lần "Cập nhật" sẽ tạo ra một dòng mới trong lịch sử
-        dayData.entries.push(entryObj);
-        
-        // Trỏ activeIndex vào bản ghi cuối cùng vừa được thêm
-        this.activeIndex = dayData.entries.length - 1;
-
+    saveBirthday() {
+        const d = document.getElementById('bd-day').value;
+        const m = document.getElementById('bd-month').value;
+        const y = document.getElementById('bd-year').value;
+        if (!d || !m) return;
+        window.Knotion.data.user_birthday = { day: parseInt(d), month: parseInt(m), year: parseInt(y) };
         window.Knotion.saveData();
-        // Sau khi lưu, hiển thị chi tiết bản ghi mới nhất
-        this.showDetail(this.activeIndex, false); 
         this.renderCalendar();
     },
 
-    /**
-     * Vẽ lưới Pixel dựa trên ViewMode (Tuần/Tháng/Năm)
-     */
+    loadBirthday() {
+        const bd = window.Knotion.data.user_birthday;
+        if (bd) {
+            document.getElementById('bd-day').value = bd.day;
+            document.getElementById('bd-month').value = bd.month;
+            document.getElementById('bd-year').value = bd.year || "";
+        }
+    },
+
+    isBirthday(d) {
+        const bd = window.Knotion.data.user_birthday;
+        return bd && d.getDate() === bd.day && (d.getMonth() + 1) === bd.month;
+    },
+
+    setViewMode(mode) {
+        this.viewMode = mode;
+        document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`seg-${mode}`).classList.add('active');
+        const glider = document.querySelector('.seg-glider');
+        const pos = { 'year': '4px', 'month': '62px', 'week': '120px' };
+        glider.style.left = pos[mode];
+        this.renderCalendar();
+    },
+
     renderCalendar() {
         const grid = document.getElementById('mf-grid');
         const label = document.getElementById('mf-label');
         grid.innerHTML = '';
         grid.className = `mf-grid ${this.viewMode}-view`;
-
-        const todayKey = this.getTodayKey();
+        
         const year = this.currentDate.getFullYear();
         const month = this.currentDate.getMonth();
+        const today = new Date();
+        today.setHours(0,0,0,0);
 
-        let startDate, endDate;
         if (this.viewMode === 'month') {
-            label.innerText = `Tháng ${String(month + 1).padStart(2, '0')}/${year}`;
-            startDate = new Date(year, month, 1);
-            endDate = new Date(year, month + 1, 0);
+            label.innerText = `Tháng ${month + 1} ${year}`;
+            this.renderMonth(year, month, grid, today);
         } else if (this.viewMode === 'week') {
-            const current = new Date(this.currentDate);
-            const first = current.getDate() - current.getDay();
-            startDate = new Date(current.setDate(first));
-            endDate = new Date(current.setDate(first + 6));
-            label.innerText = `Tuần: ${startDate.toLocaleDateString('vi-VN')}`;
+            const start = new Date(this.currentDate);
+            start.setDate(start.getDate() - start.getDay());
+            label.innerText = `Tuần từ ${start.getDate()} thg ${start.getMonth() + 1}, ${year}`;
+            this.renderWeek(start, grid, today);
         } else {
             label.innerText = `Năm ${year}`;
-            startDate = new Date(year, 0, 1);
-            endDate = new Date(year, 11, 31);
+            this.renderYear(year, grid, today);
+        }
+        this.updateStats();
+    },
+
+    createPixel(d, today, label = "", sub = "") {
+        const dateKey = this.formatDate(d);
+        const px = document.createElement('div');
+        px.className = 'px-box';
+        
+        const data = window.Knotion.data.moods[dateKey];
+        const isBday = this.isBirthday(d);
+        const isFuture = d > today;
+
+        if (isBday) px.classList.add('birthday');
+        
+        if (data && data.entries?.length > 0) {
+            const last = data.entries[data.entries.length - 1];
+            px.classList.add(`s${last.score}`);
+            if (this.viewMode === 'week') {
+                px.innerHTML = `<div class="mood-emoji">${this.getEmoji(last.score)}</div><div class="day-sub">${sub}</div>`;
+            } else if (this.viewMode === 'month') {
+                px.innerText = label;
+            }
+        } else if (isFuture) {
+            px.classList.add('future');
+            px.innerText = label;
+            px.onmouseenter = (e) => this.showTooltip(e, isBday ? "🎂 Chúc mừng sinh nhật!" : "✨ Đây sẽ là ngày tuyệt vời của bạn");
+            px.onmouseleave = () => this.hideTooltip();
+        } else {
+            px.classList.add('past-empty');
+            px.innerText = label;
+            if (this.viewMode === 'week') {
+                px.innerHTML = `<div class="day-sub">${sub}</div>`;
+            }
+            if (isBday) {
+                px.onmouseenter = (e) => this.showTooltip(e, "🎂 Chúc mừng sinh nhật!");
+                px.onmouseleave = () => this.hideTooltip();
+            }
         }
 
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-            const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            const px = document.createElement('div');
-            px.className = 'px-box';
-            px.innerText = d.getDate();
+        px.onclick = () => isFuture ? null : this.openModal(dateKey);
+        return px;
+    },
 
-            const data = window.Knotion.data.moods[dateKey];
-            const isFuture = d > new Date();
-            const isToday = dateKey === todayKey;
-
-            if (isFuture) {
-                px.classList.add('future');
-            } else if (data && data.entries?.length > 0) {
-                const lastScore = data.entries[data.entries.length - 1].score;
-                px.classList.add(`s${lastScore}`);
-                px.onclick = () => this.openModal(dateKey);
-            } else if (isToday) {
-                px.classList.add('today-empty');
-                px.onclick = () => this.openModal(dateKey);
-            } else {
-                // Ngày quá khứ chưa chấm mặc định màu xanh biển (skipped)
-                px.classList.add('skipped'); 
-                px.onclick = () => this.openModal(dateKey);
-            }
-            grid.appendChild(px);
+    renderMonth(y, m, grid, today) {
+        const days = new Date(y, m + 1, 0).getDate();
+        for (let i = 1; i <= days; i++) {
+            grid.appendChild(this.createPixel(new Date(y, m, i), today, i));
         }
     },
 
-    /**
-     * Xoá lần ghi nhận đang xem
-     */
-    deleteActiveEntry() {
-        if (!confirm("Xoá lần ghi nhận này?")) return;
-        const dayData = window.Knotion.data.moods[this.activeDate];
-        dayData.entries.splice(this.activeIndex, 1);
-        
-        if (dayData.entries.length === 0) {
-            delete window.Knotion.data.moods[this.activeDate];
-            this.closeModal();
-        } else {
-            window.Knotion.saveData();
-            this.showHistory(); // Quay lại danh sách lịch sử sau khi xoá 1 item
+    renderWeek(start, grid, today) {
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(start);
+            d.setDate(d.getDate() + i);
+            grid.appendChild(this.createPixel(d, today, "", `${d.getDate()}/${d.getMonth()+1}`));
         }
+    },
+
+    renderYear(y, grid, today) {
+        // Headers J F M...
+        grid.appendChild(document.createElement('div')); // Corner
+        ['J','F','M','A','M','J','J','A','S','O','N','D'].forEach(m => {
+            const h = document.createElement('div'); h.className = 'year-header-col'; h.innerText = m;
+            grid.appendChild(h);
+        });
+        // Rows 1-31
+        for (let d = 1; d <= 31; d++) {
+            const label = document.createElement('div'); label.className = 'year-row-label'; label.innerText = d;
+            grid.appendChild(label);
+            for (let m = 0; m < 12; m++) {
+                const date = new Date(y, m, d);
+                if (date.getMonth() === m) {
+                    grid.appendChild(this.createPixel(date, today));
+                } else {
+                    grid.appendChild(document.createElement('div'));
+                }
+            }
+        }
+    },
+
+    openModal(dateKey) {
+        this.activeDate = dateKey;
+        const data = window.Knotion.data.moods[dateKey];
+        document.getElementById('modal-date-title').innerText = `Ngày ${dateKey}`;
+        document.getElementById('mf-modal').style.display = 'flex';
+        document.getElementById('modal-birthday-msg').style.display = this.isBirthday(new Date(dateKey)) ? 'block' : 'none';
+
+        if (data && data.entries?.length > 0) {
+            this.showDetail(data.entries.length - 1);
+        } else {
+            this.startFlow('new');
+        }
+    },
+
+    showDetail(idx) {
+        const data = window.Knotion.data.moods[this.activeDate];
+        const entry = idx !== null ? data.entries[idx] : data.entries[data.entries.length - 1];
         
+        document.getElementById('modal-view-state').style.display = 'block';
+        document.getElementById('modal-history-state').style.display = 'none';
+        document.getElementById('modal-entry-flow').style.display = 'none';
+
+        document.getElementById('view-img').src = `../assets/alien0${entry.score}.png`;
+        document.getElementById('view-time').innerText = `Lúc ${entry.time}`;
+        document.getElementById('view-note').innerText = entry.note || 'Không có ghi chú.';
+        document.getElementById('btn-show-history').style.display = data.entries.length > 1 ? 'block' : 'none';
+    },
+
+    showHistory() {
+        const data = window.Knotion.data.moods[this.activeDate];
+        const list = document.getElementById('history-items');
+        list.innerHTML = '';
+        [...data.entries].reverse().forEach((e, i) => {
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            item.innerHTML = `<img src="../assets/alien0${e.score}.png"><div><div class="h-time">${e.time}</div><div class="h-note">${e.note || '...'}</div></div>`;
+            item.onclick = () => this.showDetail(data.entries.length - 1 - i);
+            list.appendChild(item);
+        });
+        document.getElementById('modal-view-state').style.display = 'none';
+        document.getElementById('modal-history-state').style.display = 'block';
+    },
+
+    finalize() {
+        const note = document.getElementById('entry-note').value;
+        const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        if (!window.Knotion.data.moods[this.activeDate]) window.Knotion.data.moods[this.activeDate] = { entries: [] };
+        window.Knotion.data.moods[this.activeDate].entries.push({ score: this.tempScore, note, time });
         window.Knotion.saveData();
+        this.openModal(this.activeDate);
         this.renderCalendar();
     },
 
-    // --- CÁC HÀM TIỆN ÍCH ---
-    setViewMode(mode) { this.viewMode = mode; this.renderCalendar(); },
-    showStep(n) {
-        document.getElementById('step-1').style.display = n === 1 ? 'block' : 'none';
-        document.getElementById('step-2').style.display = n === 2 ? 'block' : 'none';
+    updateStats() {
+        const stats = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        Object.values(window.Knotion.data.moods).forEach(d => {
+            if (d.entries?.length > 0) stats[d.entries[d.entries.length-1].score]++;
+        });
+        for (let i = 1; i <= 5; i++) document.getElementById(`stat-${i}`).innerText = stats[i];
     },
-    getTodayKey() {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    showTooltip(e, text) {
+        const tt = document.getElementById('mf-action-tooltip');
+        tt.innerText = text; tt.style.display = 'block';
+        tt.style.left = e.target.offsetLeft + (e.target.offsetWidth / 2) + 'px';
+        tt.style.top = e.target.offsetTop + 'px';
     },
-    nextStep(score) { this.tempScore = score; this.showStep(2); },
+
+    getEmoji(s) { return { 5:'😆', 4:'😊', 3:'😐', 2:'😓', 1:'😡' }[s]; },
+    formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; },
+    hideTooltip() { document.getElementById('mf-action-tooltip').style.display = 'none'; },
+    changePage(v) { 
+        if(this.viewMode === 'month') this.currentDate.setMonth(this.currentDate.getMonth() + v);
+        else if(this.viewMode === 'week') this.currentDate.setDate(this.currentDate.getDate() + (v * 7));
+        else this.currentDate.setFullYear(this.currentDate.getFullYear() + v);
+        this.renderCalendar(); 
+    },
+    startFlow() { document.getElementById('modal-view-state').style.display='none'; document.getElementById('modal-history-state').style.display='none'; document.getElementById('modal-entry-flow').style.display='block'; this.showStep(1); },
+    showStep(n) { document.getElementById('step-1').style.display = n === 1 ? 'block' : 'none'; document.getElementById('step-2').style.display = n === 2 ? 'block' : 'none'; },
+    nextStep(s) { this.tempScore = s; this.showStep(2); },
     backToStep1() { this.showStep(1); },
     closeModal() { document.getElementById('mf-modal').style.display = 'none'; },
-    changeMonth(v) { this.currentDate.setMonth(this.currentDate.getMonth() + v); this.renderCalendar(); },
-    goToToday() { this.currentDate = new Date(); this.renderCalendar(); }
+    deleteDayData() { if(confirm("Xóa toàn bộ dữ liệu ngày này?")) { delete window.Knotion.data.moods[this.activeDate]; window.Knotion.saveData(); this.closeModal(); this.renderCalendar(); } },
+    getTodayKey() { return this.formatDate(new Date()); }
 };
