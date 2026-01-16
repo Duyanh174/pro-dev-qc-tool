@@ -3,7 +3,7 @@
         <div class="mf-header-content">
             <h1>Mood Pixel</h1>
             <div class="mf-birthday-card">
-                <div class="bd-label">🎂 Thiết lập ngày sinh:</div>
+                <div class="bd-label">🎂 Nhập ngày sinh của bạn vào đây nhé:</div>
                 <div class="mf-birthday-inputs">
                     <input type="text" id="bd-day" placeholder="DD" maxlength="2" oninput="MoodFlow.autoFocus(this, 'bd-month')">
                     <span>/</span>
@@ -54,6 +54,15 @@
              <div id="mf-grid" class="mf-grid month-view"></div>
         </div>
         
+        <div class="mf-legend">
+            <div class="legend-item"><span class="dot s5"></span> Tuyệt vời</div>
+            <div class="legend-item"><span class="dot s4"></span> Vui vẻ</div>
+            <div class="legend-item"><span class="dot s3"></span> Bình thường</div>
+            <div class="legend-item"><span class="dot s2"></span> Mệt mỏi</div>
+            <div class="legend-item"><span class="dot s1"></span> Tồi tệ</div>
+            <div class="legend-item"><span class="dot skipped"></span> Chưa đánh giá</div>
+        </div>
+
         <div id="mf-action-tooltip" class="mf-action-tooltip" style="display:none"></div>
     </div>
 
@@ -97,11 +106,11 @@
                         <div id="step-1" class="entry-step">
                             <label class="entry-label">Bạn đang cảm thấy thế nào?</label>
                             <div class="mood-selection-wrapper">
-                                <button class="mood-item" onclick="MoodFlow.nextStep(5)"><img src="../assets/alien05.png"><span>Tuyệt vời</span></button>
-                                <button class="mood-item" onclick="MoodFlow.nextStep(4)"><img src="../assets/alien04.png"><span>Vui vẻ</span></button>
-                                <button class="mood-item" onclick="MoodFlow.nextStep(3)"><img src="../assets/alien03.png"><span>Bình thường</span></button>
-                                <button class="mood-item" onclick="MoodFlow.nextStep(2)"><img src="../assets/alien02.png"><span>Mệt mỏi</span></button>
-                                <button class="mood-item" onclick="MoodFlow.nextStep(1)"><img src="../assets/alien01.png"><span>Tồi tệ</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(1)"><img src="../assets/dino01.png"><span>Thật sự rất buồn</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(2)"><img src="../assets/dino02.png"><span>buồn một chút</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(3)"><img src="../assets/dino03.png"><span>Bình thường</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(4)"><img src="../assets/dino04.png"><span>hạnh phúc quá</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(5)"><img src="../assets/dino05.png"><span>Tuyệt vời</span></button>
                             </div>
                         </div>
                         <div id="step-2" class="entry-step" style="display:none">

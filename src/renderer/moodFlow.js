@@ -4,13 +4,45 @@ window.MoodFlow = {
     activeDate: null,
     activeIndex: 0,
     tempScore: 3,
+    lastCheckedDate: new Date().getDate(), // Lưu ngày cuối cùng ứng dụng ghi nhận
 
     renderDashboard(container) {
         const fs = require('fs');
         const path = require('path');
         container.innerHTML = fs.readFileSync(path.join(__dirname, '../ui/features/moodFlow.html'), 'utf8');
         this.loadBirthday();
-        this.renderCalendar();
+        this.setViewMode(this.viewMode);
+        
+        // BẮT ĐẦU LOGIC REAL-TIME
+        this.initRealTimeTracker();
+    },
+
+    /**
+     * Logic theo dõi ngày mới Real-time
+     */
+    initRealTimeTracker() {
+        // 1. Kiểm tra mỗi phút xem đã sang ngày mới chưa
+        setInterval(() => {
+            const now = new Date();
+            if (now.getDate() !== this.lastCheckedDate) {
+                this.lastCheckedDate = now.getDate();
+                this.currentDate = new Date(); // Cập nhật mốc thời gian hệ thống
+                this.renderCalendar(); // Vẽ lại lịch để cập nhật ô "Today"
+                console.log("Mood Pixel: Đã tự động cập nhật sang ngày mới!");
+            }
+        }, 60000); // 60.000ms = 1 phút
+
+        // 2. Kiểm tra khi người dùng quay lại tab (sau khi để máy sleep hoặc chuyển tab khác)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                const now = new Date();
+                if (now.getDate() !== this.lastCheckedDate) {
+                    this.lastCheckedDate = now.getDate();
+                    this.currentDate = new Date();
+                    this.renderCalendar();
+                }
+            }
+        });
     },
 
     autoFocus(el, nextId) {
@@ -45,31 +77,34 @@ window.MoodFlow = {
 
     setViewMode(mode) {
         this.viewMode = mode;
-        document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(`seg-${mode}`).classList.add('active');
+        const btns = document.querySelectorAll('.seg-btn');
+        btns.forEach(b => b.classList.remove('active'));
+        const activeBtn = document.getElementById(`seg-${mode}`);
+        if (activeBtn) activeBtn.classList.add('active');
+
         const glider = document.querySelector('.seg-glider');
-        const pos = { 'year': '4px', 'month': '62px', 'week': '120px' };
-        glider.style.left = pos[mode];
+        if (glider) {
+            const pos = { 'year': '4px', 'month': '62px', 'week': '120px' };
+            glider.style.left = pos[mode];
+        }
         this.renderCalendar();
     },
 
     renderCalendar() {
         const grid = document.getElementById('mf-grid');
         const label = document.getElementById('mf-label');
+        if (!grid || !label) return;
         grid.innerHTML = '';
         grid.className = `mf-grid ${this.viewMode}-view`;
-        
         const year = this.currentDate.getFullYear();
         const month = this.currentDate.getMonth();
-        const today = new Date();
-        today.setHours(0,0,0,0);
+        const today = new Date(); today.setHours(0,0,0,0);
 
         if (this.viewMode === 'month') {
             label.innerText = `Tháng ${month + 1} ${year}`;
             this.renderMonth(year, month, grid, today);
         } else if (this.viewMode === 'week') {
-            const start = new Date(this.currentDate);
-            start.setDate(start.getDate() - start.getDay());
+            const start = new Date(this.currentDate); start.setDate(start.getDate() - start.getDay());
             label.innerText = `Tuần từ ${start.getDate()} thg ${start.getMonth() + 1}, ${year}`;
             this.renderWeek(start, grid, today);
         } else {
@@ -83,12 +118,14 @@ window.MoodFlow = {
         const dateKey = this.formatDate(d);
         const px = document.createElement('div');
         px.className = 'px-box';
-        
         const data = window.Knotion.data.moods[dateKey];
         const isBday = this.isBirthday(d);
-        const isFuture = d > today;
+        const checkDate = new Date(d); checkDate.setHours(0,0,0,0);
+        const isFuture = checkDate > today;
+        const isToday = checkDate.getTime() === today.getTime();
 
         if (isBday) px.classList.add('birthday');
+        if (isToday) px.classList.add('today-highlight');
         
         if (data && data.entries?.length > 0) {
             const last = data.entries[data.entries.length - 1];
@@ -98,60 +135,48 @@ window.MoodFlow = {
             } else if (this.viewMode === 'month') {
                 px.innerText = label;
             }
+            px.onmouseenter = (e) => this.showTooltip(e, isBday ? "🎂 Sinh nhật bạn" : `Ngày ${d.getDate()}/${d.getMonth()+1}`);
+            px.onmouseleave = () => this.hideTooltip();
         } else if (isFuture) {
-            px.classList.add('future');
-            px.innerText = label;
+            px.classList.add('future'); px.innerText = label;
             px.onmouseenter = (e) => this.showTooltip(e, isBday ? "🎂 Chúc mừng sinh nhật!" : "✨ Đây sẽ là ngày tuyệt vời của bạn");
             px.onmouseleave = () => this.hideTooltip();
         } else {
-            px.classList.add('past-empty');
-            px.innerText = label;
-            if (this.viewMode === 'week') {
-                px.innerHTML = `<div class="day-sub">${sub}</div>`;
-            }
-            if (isBday) {
-                px.onmouseenter = (e) => this.showTooltip(e, "🎂 Chúc mừng sinh nhật!");
+            px.classList.add('past-empty'); px.innerText = label;
+            if (this.viewMode === 'week') px.innerHTML = `<div class="day-sub">${sub}</div>`;
+            if (isBday || this.viewMode === 'year') {
+                px.onmouseenter = (e) => this.showTooltip(e, isBday ? "🎂 Sinh nhật bạn" : `Ngày ${d.getDate()}/${d.getMonth()+1}`);
                 px.onmouseleave = () => this.hideTooltip();
             }
         }
-
         px.onclick = () => isFuture ? null : this.openModal(dateKey);
         return px;
     },
 
     renderMonth(y, m, grid, today) {
         const days = new Date(y, m + 1, 0).getDate();
-        for (let i = 1; i <= days; i++) {
-            grid.appendChild(this.createPixel(new Date(y, m, i), today, i));
-        }
+        for (let i = 1; i <= days; i++) grid.appendChild(this.createPixel(new Date(y, m, i), today, i));
     },
 
     renderWeek(start, grid, today) {
         for (let i = 0; i < 7; i++) {
-            const d = new Date(start);
-            d.setDate(d.getDate() + i);
+            const d = new Date(start); d.setDate(d.getDate() + i);
             grid.appendChild(this.createPixel(d, today, "", `${d.getDate()}/${d.getMonth()+1}`));
         }
     },
 
     renderYear(y, grid, today) {
-        // Headers J F M...
-        grid.appendChild(document.createElement('div')); // Corner
+        grid.appendChild(document.createElement('div'));
         ['J','F','M','A','M','J','J','A','S','O','N','D'].forEach(m => {
-            const h = document.createElement('div'); h.className = 'year-header-col'; h.innerText = m;
-            grid.appendChild(h);
+            const h = document.createElement('div'); h.className = 'year-header-col'; h.innerText = m; grid.appendChild(h);
         });
-        // Rows 1-31
         for (let d = 1; d <= 31; d++) {
             const label = document.createElement('div'); label.className = 'year-row-label'; label.innerText = d;
             grid.appendChild(label);
             for (let m = 0; m < 12; m++) {
                 const date = new Date(y, m, d);
-                if (date.getMonth() === m) {
-                    grid.appendChild(this.createPixel(date, today));
-                } else {
-                    grid.appendChild(document.createElement('div'));
-                }
+                if (date.getMonth() === m) grid.appendChild(this.createPixel(date, today));
+                else grid.appendChild(document.createElement('div'));
             }
         }
     },
@@ -162,23 +187,17 @@ window.MoodFlow = {
         document.getElementById('modal-date-title').innerText = `Ngày ${dateKey}`;
         document.getElementById('mf-modal').style.display = 'flex';
         document.getElementById('modal-birthday-msg').style.display = this.isBirthday(new Date(dateKey)) ? 'block' : 'none';
-
-        if (data && data.entries?.length > 0) {
-            this.showDetail(data.entries.length - 1);
-        } else {
-            this.startFlow('new');
-        }
+        if (data && data.entries?.length > 0) this.showDetail(data.entries.length - 1);
+        else this.startFlow('new');
     },
 
     showDetail(idx) {
         const data = window.Knotion.data.moods[this.activeDate];
         const entry = idx !== null ? data.entries[idx] : data.entries[data.entries.length - 1];
-        
         document.getElementById('modal-view-state').style.display = 'block';
         document.getElementById('modal-history-state').style.display = 'none';
         document.getElementById('modal-entry-flow').style.display = 'none';
-
-        document.getElementById('view-img').src = `../assets/alien0${entry.score}.png`;
+        document.getElementById('view-img').src = `../assets/dino0${entry.score}.png`;
         document.getElementById('view-time').innerText = `Lúc ${entry.time}`;
         document.getElementById('view-note').innerText = entry.note || 'Không có ghi chú.';
         document.getElementById('btn-show-history').style.display = data.entries.length > 1 ? 'block' : 'none';
@@ -191,7 +210,7 @@ window.MoodFlow = {
         [...data.entries].reverse().forEach((e, i) => {
             const item = document.createElement('div');
             item.className = 'history-item';
-            item.innerHTML = `<img src="../assets/alien0${e.score}.png"><div><div class="h-time">${e.time}</div><div class="h-note">${e.note || '...'}</div></div>`;
+            item.innerHTML = `<img src="../assets/dino0${e.score}.png"><div><div class="h-time">${e.time}</div><div class="h-note">${e.note || '...'}</div></div>`;
             item.onclick = () => this.showDetail(data.entries.length - 1 - i);
             list.appendChild(item);
         });
@@ -204,40 +223,54 @@ window.MoodFlow = {
         const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
         if (!window.Knotion.data.moods[this.activeDate]) window.Knotion.data.moods[this.activeDate] = { entries: [] };
         window.Knotion.data.moods[this.activeDate].entries.push({ score: this.tempScore, note, time });
-        window.Knotion.saveData();
-        this.openModal(this.activeDate);
-        this.renderCalendar();
+        window.Knotion.saveData(); this.openModal(this.activeDate); this.renderCalendar();
     },
 
     updateStats() {
         const stats = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-        Object.values(window.Knotion.data.moods).forEach(d => {
-            if (d.entries?.length > 0) stats[d.entries[d.entries.length-1].score]++;
-        });
-        for (let i = 1; i <= 5; i++) document.getElementById(`stat-${i}`).innerText = stats[i];
+        Object.values(window.Knotion.data.moods).forEach(d => { if (d.entries?.length > 0) stats[d.entries[d.entries.length-1].score]++; });
+        for (let i = 1; i <= 5; i++) { const el = document.getElementById(`stat-${i}`); if (el) el.innerText = stats[i]; }
     },
 
     showTooltip(e, text) {
-        const tt = document.getElementById('mf-action-tooltip');
-        tt.innerText = text; tt.style.display = 'block';
-        tt.style.left = e.target.offsetLeft + (e.target.offsetWidth / 2) + 'px';
-        tt.style.top = e.target.offsetTop + 'px';
+        const tt = document.getElementById('mf-action-tooltip'); if (!tt) return;
+        tt.innerText = text; tt.style.display = 'block'; tt.style.opacity = '1';
+        const target = e.target; const container = document.querySelector('.mf-container');
+        const rect = target.getBoundingClientRect(); const contRect = container.getBoundingClientRect();
+        const x = rect.left - contRect.left + (rect.width / 2);
+        const y = rect.top - contRect.top;
+        tt.style.left = x + 'px'; tt.style.top = y + 'px';
     },
 
-    getEmoji(s) { return { 5:'😆', 4:'😊', 3:'😐', 2:'😓', 1:'😡' }[s]; },
-    formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; },
-    hideTooltip() { document.getElementById('mf-action-tooltip').style.display = 'none'; },
+    getEmoji(s) {
+        // Trả về chuỗi HTML image thay vì Emoji
+        const moodImages = {
+            5: '<div class="week-wrap"><img class="week-img" src="../assets/dino05.png" class="mf-icon-s"></div>',
+            4: '<div class="week-wrap"><img class="week-img" src="../assets/dino04.png" class="mf-icon-s"></div> ',
+            3: '<div class="week-wrap"><img class="week-img" src="../assets/dino03.png" class="mf-icon-s"></div> ',
+            2: '<div class="week-wrap"><img class="week-img" src="../assets/dino02.png" class="mf-icon-s"></div> ',
+            1: '<div class="week-wrap"><img class="week-img" src="../assets/dino01.png" class="mf-icon-s"></div>'
+        };
+        return moodImages[s] || '';
+    },    formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; },
+    hideTooltip() { const tt = document.getElementById('mf-action-tooltip'); if(tt) tt.style.display = 'none'; },
     changePage(v) { 
         if(this.viewMode === 'month') this.currentDate.setMonth(this.currentDate.getMonth() + v);
         else if(this.viewMode === 'week') this.currentDate.setDate(this.currentDate.getDate() + (v * 7));
         else this.currentDate.setFullYear(this.currentDate.getFullYear() + v);
         this.renderCalendar(); 
     },
-    startFlow() { document.getElementById('modal-view-state').style.display='none'; document.getElementById('modal-history-state').style.display='none'; document.getElementById('modal-entry-flow').style.display='block'; this.showStep(1); },
+    startFlow() { 
+        document.getElementById('modal-view-state').style.display='none'; 
+        document.getElementById('modal-history-state').style.display='none'; 
+        document.getElementById('modal-entry-flow').style.display='block'; 
+        // SỬA TẠI ĐÂY: Reset giá trị note mỗi khi mở luồng nhập liệu mới
+        document.getElementById('entry-note').value = ''; 
+        this.showStep(1); 
+    },
     showStep(n) { document.getElementById('step-1').style.display = n === 1 ? 'block' : 'none'; document.getElementById('step-2').style.display = n === 2 ? 'block' : 'none'; },
     nextStep(s) { this.tempScore = s; this.showStep(2); },
     backToStep1() { this.showStep(1); },
     closeModal() { document.getElementById('mf-modal').style.display = 'none'; },
-    deleteDayData() { if(confirm("Xóa toàn bộ dữ liệu ngày này?")) { delete window.Knotion.data.moods[this.activeDate]; window.Knotion.saveData(); this.closeModal(); this.renderCalendar(); } },
-    getTodayKey() { return this.formatDate(new Date()); }
+    deleteDayData() { if(confirm("Xóa toàn bộ dữ liệu ngày này?")) { delete window.Knotion.data.moods[this.activeDate]; window.Knotion.saveData(); this.closeModal(); this.renderCalendar(); } }
 };
