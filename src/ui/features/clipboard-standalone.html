@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../../styles/clipboard/clipboard.css">
+    <style>
+        body, html { margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+        .standalone-root { height: 100%; display: flex; flex-direction: column;background: #4545457a; }
+        #clipboard-container { flex: 1; overflow: hidden; }
+        /* CSS Overrides cho chế độ Window */
+        .cb-ios-wrapper { padding: 15px !important;background: #eeeeee33; }
+        .cb-item { margin-bottom: 8px !important; }
+        .standalone-root .cb-header-left{
+            display:none;
+        }
+    </style>
+</head>
+<body>
+    <div class="standalone-root">
+        <div id="clipboard-container"></div>
+    </div>
+
+    <script src="../../renderer/clipboard.js"></script>
+    <script>
+        // Fake Knotion Object nếu không có (tránh lỗi render)
+        if (!window.Knotion) {
+            window.Knotion = {
+                data: JSON.parse(localStorage.getItem('knotion_clipboard_bk') || '{"clipboard":{"recent":[],"pinned":[]}}'),
+                saveData: function() { localStorage.setItem('knotion_clipboard_bk', JSON.stringify(this.data)); }
+            };
+        }
+        window.onload = () => ClipboardFlow.render();
+    </script>
+</body>
+</html>

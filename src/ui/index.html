@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="../styles/format/format.css">
     <link rel="stylesheet" href="../styles/knotion/knotion.css">
     <link rel="stylesheet" href="../styles/moodFlow/moodFlow.css">
+    <link rel="stylesheet" href="../styles/clipboard/clipboard.css">
 </head>
 <body>
     <div class="app-container">
@@ -17,6 +18,7 @@
                 <div class="nav-item" id="nav-codepen" onclick="showTab('codepen')" title="CodePen Mode">📝</div>
                 <div class="nav-item" id="nav-format" onclick="showTab('format')" title="Format Code">🧹</div>
                 <div class="nav-item" id="nav-knotion" onclick="showTab('knotion')" title="Knotion">🧠</div>
+                <div class="nav-item" id="nav-clipboard" onclick="showTab('clipboard')" title="Clipboard Manager">📋</div>
                 <div class="nav-item" id="nav-settings" onclick="showTab('settings')" title="Settings">⚙️</div>
             </div>
         </nav>
@@ -101,6 +103,12 @@
             <!-- tab knotion -->
             <div id="tab-knotion" class="tab-content" style="display:none">
                 <div id="knotion-container" class="knotion-wrapper"></div>
+            </div>
+
+            <!-- tab clipboard -->
+            <div id="tab-clipboard" class="tab-content" style="display:none">
+                <div id="clipboard-container" class="clipboard-wrapper">
+                    </div>
             </div>
 
             <!-- tab setting -->
@@ -205,5 +213,7 @@
     <script src="../renderer/codepen.js" ></script>
     <script src="../renderer/format.js"></script>
     <script src="../renderer/knotion.js"></script>
+    <script src="../renderer/clipboard.js"></script>
+
 </body>
 </html>
