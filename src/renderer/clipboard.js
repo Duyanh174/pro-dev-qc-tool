@@ -1,24 +1,20 @@
 /**
- * CLIPBOARD MANAGER - FIXED UNIVERSAL PATH
+ * CLIPBOARD MANAGER - UNIVERSAL SYNC & RENDER (FIXED CROSS-WINDOW SYNC)
+ * Bản sửa lỗi triệt để đồng bộ 2 chiều giữa App chính và Window standalone
  */
 window.ClipboardFlow = {
     data: { recent: [], pinned: [] },
     lastContent: { text: '', image: '' },
     isWatcherStarted: false,
 
+    // 1. KHỞI TẠO THEO DÕI
     init() {
         if (this.isWatcherStarted) return;
-        const { clipboard } = require('electron');
+        const { clipboard, ipcRenderer } = require('electron');
         
-        // Load data
-        if (window.Knotion && window.Knotion.data && window.Knotion.data.clipboard) {
-            this.data = window.Knotion.data.clipboard;
-        } else {
-            const saved = localStorage.getItem('knotion_clipboard');
-            if (saved) this.data = JSON.parse(saved);
-        }
+        this.loadData();
 
-        // Watcher loop
+        // Theo dõi clipboard hệ thống (Cmd+C)
         setInterval(() => {
             const text = clipboard.readText();
             const image = clipboard.readImage();
@@ -33,32 +29,64 @@ window.ClipboardFlow = {
             }
         }, 1000);
 
+        // SYNC: Xoá/Ghim đồng bộ giữa các cửa sổ (SỬA ĐỔI TẠI ĐÂY)
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'knotion_clipboard') {
+                // Khi localStorage thay đổi, ép buộc nạp lại và vẽ lại UI
+                this.loadData();
+                this.updateUI();
+            }
+        });
+
+        // SYNC: Gạt Switch Toggle ở app chính khi đóng/mở window
+        ipcRenderer.on('clipboard-window-status', (event, isActive) => {
+            const toggle = document.getElementById('cb-mode-switch');
+            if (toggle) toggle.checked = isActive;
+        });
+
         this.isWatcherStarted = true;
         this.render();
     },
 
+    // ƯU TIÊN localStorage ĐỂ ĐỒNG BỘ 2 CHIỀU (SỬA ĐỔI TẠI ĐÂY)
+    loadData() {
+        const saved = localStorage.getItem('knotion_clipboard');
+        if (saved) {
+            this.data = JSON.parse(saved);
+            // Nếu đang ở app chính, cập nhật luôn vào Knotion để đồng bộ file lưu
+            if (window.Knotion && window.Knotion.data) {
+                window.Knotion.data.clipboard = this.data;
+            }
+        } else if (window.Knotion && window.Knotion.data && window.Knotion.data.clipboard) {
+            this.data = window.Knotion.data.clipboard;
+        }
+    },
+
+    // 2. XỬ LÝ DỮ LIỆU
     addEntry(entry) {
         if (this.data.recent.length > 0 && this.data.recent[0].content === entry.content) return;
         if (this.data.pinned.some(i => i.content === entry.content)) return;
 
         entry.id = Date.now();
-        entry.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         this.data.recent.unshift(entry);
         if (this.data.recent.length > 15) this.data.recent.pop();
         this.saveAndRefresh();
     },
 
     saveAndRefresh() {
+        // Cập nhật localStorage trước để kích hoạt sự kiện storage cho các cửa sổ khác
+        localStorage.setItem('knotion_clipboard', JSON.stringify(this.data));
+
         if (window.Knotion) {
             if (!window.Knotion.data) window.Knotion.data = {};
             window.Knotion.data.clipboard = this.data;
             window.Knotion.saveData();
         }
-        localStorage.setItem('knotion_clipboard', JSON.stringify(this.data));
+        
         this.updateUI();
     },
 
-    // --- HÀM RENDER ĐÃ FIX LỖI ĐƯỜNG DẪN ---
+    // 3. RENDER UI - KHẮC PHỤC LỖI CONTAINER TRỐNG
     render() {
         const container = document.getElementById('clipboard-container');
         if (!container) return;
@@ -66,34 +94,23 @@ window.ClipboardFlow = {
         const fs = require('fs');
         const path = require('path');
         
-        // Mảng các đường dẫn khả thi (Thử từng cái một)
-        const possiblePaths = [
-            path.join(__dirname, 'features', 'clipboard.html'), // Nếu chạy từ standalone
-            path.join(__dirname, '..', 'ui', 'features', 'clipboard.html'), // Nếu chạy từ renderer/
-            path.join(__dirname, 'ui', 'features', 'clipboard.html'), // Nếu gốc là src/
-            '/Users/anh.bui/Documents/pro-dev-qc-tool/src/ui/features/clipboard.html' // Tuyệt đối (chỉ để debug)
-        ];
+        // Xác định đường dẫn UI linh hoạt
+        const pathFromMain = path.resolve(__dirname, '..', 'ui', 'features', 'clipboard.html');
+        const pathStandalone = path.join(__dirname, 'clipboard.html');
+        const pathStandaloneAlt = path.resolve(__dirname, 'features', 'clipboard.html');
 
         let uiPath = "";
-        for (let p of possiblePaths) {
-            if (fs.existsSync(p)) {
-                uiPath = p;
-                break;
-            }
-        }
+        if (fs.existsSync(pathFromMain)) uiPath = pathFromMain;
+        else if (fs.existsSync(pathStandalone)) uiPath = pathStandalone;
+        else if (fs.existsSync(pathStandaloneAlt)) uiPath = pathStandaloneAlt;
 
         if (container.innerHTML.trim() === "") {
             if (uiPath) {
                 try {
                     container.innerHTML = fs.readFileSync(uiPath, 'utf8');
-                    console.log("Clipboard UI loaded from:", uiPath);
-                } catch (err) {
-                    console.error("Lỗi đọc file UI:", err);
-                }
+                } catch (err) { console.error("Read UI Error:", err); }
             } else {
-                console.error("KHÔNG TÌM THẤY FILE clipboard.html ở bất kỳ đâu!");
-                // Hiển thị thông báo lỗi lên giao diện để người dùng biết
-                container.innerHTML = `<div style="color:red; padding:20px;">Error: UI file not found. Checked: ${possiblePaths.join('<br>')}</div>`;
+                container.innerHTML = `<div style="color:red; padding:20px; font-size:12px;">UI file not found.</div>`;
             }
         }
         this.updateUI();
@@ -128,13 +145,13 @@ window.ClipboardFlow = {
                         : `<img src="${item.content}" class="cb-img">`}
                 </div>
                 <div class="cb-item-actions">
-                    <button class="cb-btn-icon cb-btn-copy" onclick="ClipboardFlow.copyToSystem(this.parentElement.parentElement, '${item.type}')">
+                    <button class="cb-btn-copy" onclick="ClipboardFlow.copyToSystem(this.parentElement.parentElement, '${item.type}')">
                         COPY
                     </button>
                     <button class="cb-btn-icon" onclick="event.stopPropagation(); ClipboardFlow.${type === 'recent' ? 'pinItem' : 'unpinItem'}(${item.id})">
                         ${type === 'recent' ? '📌' : '📍'}
                     </button>
-                    <button class="cb-btn-icon" onclick="event.stopPropagation(); ClipboardFlow.deleteItem(${item.id}, '${type}')">
+                    <button class="cb-btn-icon delete" onclick="event.stopPropagation(); ClipboardFlow.deleteItem(${item.id}, '${type}')">
                         🗑️
                     </button>
                 </div>
@@ -142,6 +159,7 @@ window.ClipboardFlow = {
         `).join('');
     },
 
+    // 4. THAO TÁC HỆ THỐNG
     copyToSystem(el, type) {
         const { clipboard, nativeImage } = require('electron');
         try {
@@ -190,7 +208,8 @@ window.ClipboardFlow = {
     performSearch() {
         const q = document.getElementById('cb-search').value.toLowerCase();
         document.querySelectorAll('.cb-item').forEach(item => {
-            item.style.display = item.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
+            const isMatch = item.innerText.toLowerCase().includes(q);
+            item.style.display = isMatch ? 'flex' : 'none';
         });
     },
 
@@ -203,10 +222,10 @@ window.ClipboardFlow = {
 // Khởi chạy
 ClipboardFlow.init();
 
-// Hook vào hàm showTab có sẵn
-const originalShowTabCb = window.showTab;
+// Hook vào hàm chuyển tab của ứng dụng chính
+const originalShowTabBase = window.showTab;
 window.showTab = function(tabName) {
-    if (typeof originalShowTabCb === 'function') originalShowTabCb(tabName);
+    if (typeof originalShowTabBase === 'function') originalShowTabBase(tabName);
     if (tabName === 'clipboard') {
         setTimeout(() => ClipboardFlow.render(), 10);
     }

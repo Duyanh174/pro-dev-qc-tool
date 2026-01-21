@@ -5,13 +5,15 @@ const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dpn8hugjc/image/upload";
 const CLOUDINARY_PRESET = "codepen_preset";
 
 const CodePenStorage = {
-    currentSnippets: [],
-    localSnippets: [],
+    currentSnippets: [], 
+    localSnippets: [],  
     selectedImageFile: null,
     currentEditId: null,
     currentName: "Untitled",
     storageMode: "cloud", 
     libraryTab: "cloud",
+    searchQuery: "",
+    sortType: "newest",
 
     authCallback: null,
     pendingSnippet: null,
@@ -60,12 +62,13 @@ const CodePenStorage = {
         });
     },
 
-    // ĐỒNG BỘ TÊN Ở MỌI NƠI
-    updateNameUI() {
+    // FIX: Đồng bộ tên thông minh không gây mất focus
+    updateNameUI(sourceId = null) {
         const headerInput = document.getElementById('active-snippet-name');
         const modalInput = document.getElementById('snippet-name-input');
-        if (headerInput) headerInput.value = this.currentName;
-        if (modalInput) modalInput.value = this.currentName;
+        
+        if (headerInput && sourceId !== 'active-snippet-name') headerInput.value = this.currentName;
+        if (modalInput && sourceId !== 'snippet-name-input') modalInput.value = this.currentName;
     },
 
     // 4. XÁC THỰC
@@ -92,13 +95,12 @@ const CodePenStorage = {
 
     showForgotPass() { alert("Nhắn tin hoặc gặp Duy Anh để lấy lại pass =)))"); },
 
-    // 5. LOGIC CAPTURE (SỬA LỖI RESET VÀ LỆCH VÙNG)
+    // 5. LOGIC CAPTURE
     startCaptureMode() {
         const overlay = document.getElementById('capture-overlay');
         const selection = document.getElementById('selection-box');
         const previewFrame = document.getElementById('preview-window');
 
-        // Ghi nhớ trạng thái trước khi ẩn
         this.currentName = document.getElementById('snippet-name-input').value;
         const authorVal = document.getElementById('author-name-input').value;
         if (authorVal) localStorage.setItem('last_author', authorVal);
@@ -127,16 +129,9 @@ const CodePenStorage = {
 
             try {
                 const frameDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
-                // Fix độ lệch bằng cách tính toán chính xác scroll
                 const rawBase64 = await modernScreenshot.domToJpeg(frameDoc.body, {
-                    quality: 0.9,
-                    width: rect.width,
-                    height: rect.height,
-                    style: {
-                        transform: `translate(-${startX}px, -${startY}px)`,
-                        width: frameDoc.body.scrollWidth + 'px',
-                        height: frameDoc.body.scrollHeight + 'px'
-                    }
+                    quality: 0.9, width: rect.width, height: rect.height,
+                    style: { transform: `translate(-${startX}px, -${startY}px)`, width: frameDoc.body.scrollWidth + 'px', height: frameDoc.body.scrollHeight + 'px' }
                 });
                 this.selectedImageFile = await this.compressImage(rawBase64);
                 document.getElementById('image-preview-element').src = this.selectedImageFile;
@@ -145,7 +140,7 @@ const CodePenStorage = {
         };
     },
 
-    // 6. MODAL LƯU (PHÂN BIỆT SITE)
+    // 6. MODAL LƯU
     switchStorageMode(mode) {
         this.storageMode = mode;
         const passSection = document.getElementById('password-section');
@@ -164,20 +159,17 @@ const CodePenStorage = {
             modalWrap.style.borderTopColor = '#28a745';
         }
 
-        // Logic ẩn nút Cập nhật nếu site lưu trữ không khớp site nguồn
         if (this.currentEditId && updateBtn) {
             const isLocalId = String(this.currentEditId).startsWith("local_");
             if ((mode === 'cloud' && isLocalId) || (mode === 'local' && !isLocalId)) {
                 updateBtn.style.display = 'none';
-            } else {
-                updateBtn.style.display = 'inline-block';
-            }
+            } else { updateBtn.style.display = 'inline-block'; }
         }
     },
 
     openSaveModal() {
         document.getElementById('save-modal-overlay').style.display = 'flex';
-        this.updateNameUI(); // Đảm bảo tên đồng bộ khi mở
+        this.updateNameUI();
 
         const editGroup = document.getElementById('edit-actions-group');
         const newGroup = document.getElementById('new-actions-group');
@@ -185,9 +177,8 @@ const CodePenStorage = {
 
         if (this.currentEditId) {
             const isLocalId = String(this.currentEditId).startsWith("local_");
-            this.switchStorageMode(this.storageMode); // Dùng mode hiện tại đang chọn
+            this.switchStorageMode(this.storageMode);
             editGroup.style.display = 'flex'; newGroup.style.display = 'none';
-            
             const item = isLocalId ? this.localSnippets.find(s => s.id === this.currentEditId) : this.currentSnippets.find(s => s.id === this.currentEditId);
             if (item && item.image_url && !this.selectedImageFile) {
                 imgPrev.src = item.image_url; imgPrev.style.display = 'block';
@@ -228,11 +219,11 @@ const CodePenStorage = {
             } else {
                 let password = document.getElementById('password-input').value.trim();
                 let imageUrl = document.getElementById('image-preview-element').src;
-                if (this.selectedImageFile) imageUrl = await this.uploadToCloudinary();
+                if (CodePenStorage.selectedImageFile) imageUrl = await this.uploadToCloudinary();
 
-                const isPatch = forceUpdate && this.currentEditId;
+                const isPatch = forceUpdate && CodePenStorage.currentEditId;
                 const method = isPatch ? 'PATCH' : 'POST';
-                const url = isPatch ? `${SUPABASE_URL}/rest/v1/snippets?id=eq.${this.currentEditId}` : `${SUPABASE_URL}/rest/v1/snippets`;
+                const url = isPatch ? `${SUPABASE_URL}/rest/v1/snippets?id=eq.${CodePenStorage.currentEditId}` : `${SUPABASE_URL}/rest/v1/snippets`;
 
                 const response = await fetch(url, {
                     method: method,
@@ -255,7 +246,7 @@ const CodePenStorage = {
         finally { activeButtons.forEach(btn => { btn.disabled = false; btn.style.opacity = '1'; }); }
     },
 
-    // 8. THƯ VIỆN & CORE
+    // --- 8. THƯ VIỆN (FIX LỖI GÕ CHỮ TRONG Ô TÌM KIẾM) ---
     async loadLibrary() {
         try {
             this.loadLocalLibrary();
@@ -267,40 +258,79 @@ const CodePenStorage = {
         } catch (e) { this.renderLibraryUI(); }
     },
 
-    renderLibraryUI() {
-        const renderList = (snippets, isLocal) => {
-            return snippets.map(item => {
-                const thumbUrl = item.image_url ? (isLocal ? item.image_url : item.image_url.replace('/upload/', '/upload/w_160,h_100,c_fill,q_auto,f_auto/')) : 'https://via.placeholder.com/80x50?text=No+Img';
-                return `
-                    <div class="library-item" onclick="CodePenStorage.applySnippet('${item.id}')" style="border-left: 3px solid ${isLocal ? '#007acc' : '#28a745'}">
-                        <img src="${thumbUrl}" class="snippet-thumb" style="width:80px; height:50px; object-fit:cover; border-radius:4px;">
-                        <div class="library-item-info" style="flex:1; margin-left:10px;">
-                            <span style="font-weight:bold">${item.name} ${item.password ? '🔒' : ''}</span><br>
-                            <small class="author-tag" style="background:${isLocal ? '#007acc22' : '#28a74522'}">👤 ${item.author_name || 'Duy Anh'}</small>
-                        </div>
-                        <div class="library-item-actions">
-                            <span class="edit-btn" onclick="CodePenStorage.editSnippet('${item.id}', event)">✏️</span>
-                            <span class="delete-btn-codepen" onclick="CodePenStorage.deleteSnippet('${item.id}', event)">🗑</span>
-                        </div>
-                    </div>`;
-            }).join('');
-        };
+    // Hàm phụ để chỉ cập nhật danh sách, không vẽ lại ô input
+    refreshLibraryList() {
+        const listEl = document.getElementById('library-items-list');
+        if (!listEl) return;
 
+        let sourceData = this.libraryTab === 'local' ? this.localSnippets : this.currentSnippets;
+        
+        let filtered = sourceData.filter(item => {
+            const query = this.searchQuery.toLowerCase();
+            return item.name.toLowerCase().includes(query) || (item.author_name && item.author_name.toLowerCase().includes(query));
+        });
+
+        filtered.sort((a, b) => {
+            if (this.sortType === 'name') return a.name.localeCompare(b.name);
+            if (this.sortType === 'author') return (a.author_name || "").localeCompare(b.author_name || "");
+            if (this.sortType === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+            return new Date(b.created_at) - new Date(a.created_at);
+        });
+
+        listEl.innerHTML = filtered.map(item => {
+            const isLocal = String(item.id).startsWith("local_");
+            const thumbUrl = item.image_url ? (isLocal ? item.image_url : item.image_url.replace('/upload/', '/upload/w_160,h_100,c_fill,q_auto,f_auto/')) : 'https://via.placeholder.com/80x50?text=No+Img';
+            return `
+                <div class="library-item" onclick="CodePenStorage.applySnippet('${item.id}')" style="border-left: 3px solid ${isLocal ? '#007acc' : '#28a745'}">
+                    <img src="${thumbUrl}" class="snippet-thumb" style="width:80px; height:50px; object-fit:cover; border-radius:4px;">
+                    <div class="library-item-info" style="flex:1; margin-left:10px;">
+                        <span style="font-weight:bold">${item.name} ${item.password ? '🔒' : ''}</span><br>
+                        <small class="author-tag" style="background:${isLocal ? '#007acc22' : '#28a74522'}">👤 ${item.author_name || 'Duy Anh'}</small>
+                    </div>
+                    <div class="library-item-actions">
+                        <span class="edit-btn" onclick="CodePenStorage.editSnippet('${item.id}', event)">✏️</span>
+                        <span class="delete-btn-codepen" onclick="CodePenStorage.deleteSnippet('${item.id}', event)">🗑</span>
+                    </div>
+                </div>`;
+        }).join('') || '<p style="text-align:center; color:#555; padding:20px;">Không tìm thấy kết quả...</p>';
+    },
+
+    renderLibraryUI() {
         let modal = document.querySelector('.library-modal-overlay');
-        if (!modal) { modal = document.createElement('div'); modal.className = 'library-modal-overlay'; document.body.appendChild(modal); }
+        if (!modal) { 
+            modal = document.createElement('div'); 
+            modal.className = 'library-modal-overlay'; 
+            document.body.appendChild(modal); 
+        }
+        
+        // Vẽ khung Modal và Ô tìm kiếm (Chỉ vẽ 1 lần)
         modal.innerHTML = `
-            <div class="library-modal">
+            <div class="library-modal" style="width: 450px;">
                 <div class="library-tabs">
                     <div class="lib-tab ${this.libraryTab === 'cloud' ? 'active' : ''}" onclick="CodePenStorage.libraryTab='cloud'; CodePenStorage.renderLibraryUI()">☁️ Cloud</div>
                     <div class="lib-tab ${this.libraryTab === 'local' ? 'active' : ''}" onclick="CodePenStorage.libraryTab='local'; CodePenStorage.renderLibraryUI()">💻 Local</div>
                 </div>
-                <div class="library-list" style="max-height:400px; overflow-y:auto;">
-                    ${this.libraryTab === 'local' ? renderList(this.localSnippets, true) : renderList(this.currentSnippets, false)}
+
+                <div class="library-search-filter">
+                    <input type="text" class="lib-search-input" placeholder="Tìm tên hoặc tác giả..." value="${this.searchQuery}" 
+                           oninput="CodePenStorage.searchQuery=this.value; CodePenStorage.refreshLibraryList()">
+                    <select class="lib-sort-select" onchange="CodePenStorage.sortType=this.value; CodePenStorage.refreshLibraryList()">
+                        <option value="newest" ${this.sortType==='newest'?'selected':''}>Mới nhất</option>
+                        <option value="oldest" ${this.sortType==='oldest'?'selected':''}>Cũ nhất</option>
+                        <option value="name" ${this.sortType==='name'?'selected':''}>Tên (A-Z)</option>
+                        <option value="author" ${this.sortType==='author'?'selected':''}>Tác giả (A-Z)</option>
+                    </select>
                 </div>
+
+                <div class="library-list" id="library-items-list" style="max-height:400px; overflow-y:auto;">
+                    </div>
                 <div style="text-align:right; margin-top:10px;"><button class="action-btn btn-secondary" onclick="this.closest('.library-modal-overlay').remove()">Close</button></div>
             </div>`;
+        
+        this.refreshLibraryList(); // Đổ dữ liệu vào list ngay sau khi vẽ khung
     },
 
+    // --- CÁC HÀM BỊ THIẾU CẦN KHÔI PHỤC ---
     applySnippet(id) {
         const isLocal = String(id).startsWith("local_");
         const item = isLocal ? this.localSnippets.find(s => s.id === id) : this.currentSnippets.find(s => s.id === id);
@@ -314,8 +344,10 @@ const CodePenStorage = {
                 CodePen.editors.js.setValue(data.js || "", -1);
                 CodePen.externalResources = data.resources || { css: [], js: [] };
                 CodePen.run();
-                document.querySelector('.library-modal-overlay').remove();
-            } catch (e) { alert("Lỗi!"); }
+                if (document.querySelector('.library-modal-overlay')) {
+                    document.querySelector('.library-modal-overlay').remove();
+                }
+            } catch (e) { alert("Lỗi giải nén dữ liệu!"); }
         });
     },
 
@@ -331,7 +363,9 @@ const CodePenStorage = {
                 const img = document.getElementById('image-preview-element');
                 img.src = item.image_url; img.style.display = 'block';
             }
-            if (document.querySelector('.library-modal-overlay')) document.querySelector('.library-modal-overlay').remove();
+            if (document.querySelector('.library-modal-overlay')) {
+                document.querySelector('.library-modal-overlay').remove();
+            }
         });
     },
 
@@ -340,21 +374,25 @@ const CodePenStorage = {
         const isLocal = String(id).startsWith("local_");
         const item = isLocal ? this.localSnippets.find(s => s.id === id) : this.currentSnippets.find(s => s.id === id);
         this.requestAccess(item, async () => {
-            if (!confirm("Xóa?")) return;
+            if (!confirm("Xóa vĩnh viễn snippet này?")) return;
             if (isLocal) {
                 let localData = JSON.parse(localStorage.getItem(this.LOCAL_KEY) || "[]");
                 localStorage.setItem(this.LOCAL_KEY, JSON.stringify(localData.filter(i => i.id !== id)));
             } else {
-                await fetch(`${SUPABASE_URL}/rest/v1/snippets?id=eq.${id}`, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } });
+                await fetch(`${SUPABASE_URL}/rest/v1/snippets?id=eq.${id}`, { 
+                    method: 'DELETE', 
+                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } 
+                });
             }
             this.loadLibrary();
         });
     },
 
+    // --- PHỤ TRỢ ---
     async uploadToCloudinary() {
-        if (!this.selectedImageFile) return null;
+        if (!CodePenStorage.selectedImageFile) return null;
         const formData = new FormData();
-        formData.append("file", this.selectedImageFile);
+        formData.append("file", CodePenStorage.selectedImageFile);
         formData.append("upload_preset", CLOUDINARY_PRESET);
         const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
         const data = await res.json();
@@ -366,8 +404,8 @@ const CodePenStorage = {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = async (event) => {
-            this.selectedImageFile = await this.compressImage(event.target.result);
-            document.getElementById('image-preview-element').src = this.selectedImageFile;
+            CodePenStorage.selectedImageFile = await CodePenStorage.compressImage(event.target.result);
+            document.getElementById('image-preview-element').src = CodePenStorage.selectedImageFile;
             document.getElementById('image-preview-element').style.display = 'block';
         };
         reader.readAsDataURL(file);
@@ -376,10 +414,18 @@ const CodePenStorage = {
     closeSaveModal() {
         document.getElementById('save-modal-overlay').style.display = 'none';
         document.getElementById('image-preview-element').style.display = 'none';
-        this.selectedImageFile = null;
+        CodePenStorage.selectedImageFile = null;
     },
-    resetToNew() { this.currentEditId = null; this.currentName = "Untitled"; this.updateNameUI(); }
+    resetToNew() { CodePenStorage.currentEditId = null; CodePenStorage.currentName = "Untitled"; CodePenStorage.updateNameUI(); }
 };
+
+// ĐỒNG BỘ TÊN REAL-TIME KHÔNG MẤT FOCUS
+document.addEventListener('input', (e) => {
+    if (e.target.id === 'active-snippet-name' || e.target.id === 'snippet-name-input') {
+        CodePenStorage.currentName = e.target.value;
+        CodePenStorage.updateNameUI(e.target.id); // Truyền ID để không cập nhật lại chính nó
+    }
+});
 
 // CÁC HÀM CỦA CODEPEN (BỔ SUNG ĐỒNG BỘ TÊN)
 window.runCode = () => CodePen.run();
@@ -390,13 +436,13 @@ window.clearCode = () => {
     }
 };
 
-// ĐỒNG BỘ TÊN REAL-TIME
-document.addEventListener('input', (e) => {
-    if (e.target.id === 'active-snippet-name' || e.target.id === 'snippet-name-input') {
-        CodePenStorage.currentName = e.target.value;
-        CodePenStorage.updateNameUI();
-    }
-});
+// // ĐỒNG BỘ TÊN REAL-TIME
+// document.addEventListener('input', (e) => {
+//     if (e.target.id === 'active-snippet-name' || e.target.id === 'snippet-name-input') {
+//         CodePenStorage.currentName = e.target.value;
+//         CodePenStorage.updateNameUI();
+//     }
+// });
 
 const CodePen = {
   isDraggingV: false,

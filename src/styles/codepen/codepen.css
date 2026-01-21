@@ -824,3 +824,17 @@
 .lib-tab.active {
     color: white; border-bottom: 2px solid #007acc; background: rgba(255,255,255,0.05);
 }
+
+/* Library Search & Filter Area */
+.library-search-filter {
+    display: flex; gap: 10px; margin-bottom: 15px; padding: 0 5px;
+}
+.lib-search-input {
+    flex: 1; padding: 8px 12px; background: #252526; border: 1px solid #333;
+    color: white; border-radius: 4px; font-size: 12px; outline: none;
+}
+.lib-search-input:focus { border-color: #007acc; }
+.lib-sort-select {
+    padding: 8px; background: #252526; border: 1px solid #333;
+    color: white; border-radius: 4px; font-size: 12px; cursor: pointer; outline: none;
+}

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electron');
 const path = require('path');
 const url = require('url');
 
@@ -24,7 +24,7 @@ function createWindow() {
 // ========================================================
 
 function createClipboardWindow() {
-    if (clipboardWindow) {
+    if (clipboardWindow && !clipboardWindow.isDestroyed()) {
         clipboardWindow.focus();
         return;
     }
@@ -32,8 +32,8 @@ function createClipboardWindow() {
     clipboardWindow = new BrowserWindow({
         width: 380,
         height: 600,
-        frame: true,         // BẬT THANH ĐIỀU HƯỚNG MẶC ĐỊNH
-        alwaysOnTop: true,   // Luôn nổi trên các ứng dụng khác
+        frame: true,         // Thanh điều hướng mặc định
+        alwaysOnTop: true,
         title: "Clipboard Manager",
         backgroundColor: '#ffffff',
         webPreferences: {
@@ -52,33 +52,59 @@ function createClipboardWindow() {
     clipboardWindow.loadURL(startUrl);
 
     clipboardWindow.on('closed', () => {
+        // FIX LỖI 2: Kiểm tra mainWindow còn sống không trước khi send
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('clipboard-window-status', false);
+        }
         clipboardWindow = null;
     });
 }
 
-// Lắng nghe sự kiện từ Renderer
+// Lắng nghe sự kiện toggle từ Renderer
 ipcMain.on('toggle-clipboard-window', (event, isWindow) => {
     if (isWindow) {
         createClipboardWindow();
     } else {
-        if (clipboardWindow) clipboardWindow.close();
+        if (clipboardWindow && !clipboardWindow.isDestroyed()) {
+            clipboardWindow.close();
+        }
     }
 });
 
 ipcMain.on('close-clipboard-ui', () => {
-    if (clipboardWindow) clipboardWindow.close();
+    if (clipboardWindow && !clipboardWindow.isDestroyed()) {
+        clipboardWindow.close();
+    }
 });
 
 // ========================================================
-// IPC HANDLERS - GIỮ NGUYÊN BASE CŨ
+// IPC HANDLERS & GLOBAL SHORTCUT
 // ========================================================
+
 ipcMain.handle('select-folder', async () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
     return await dialog.showOpenDialog(mainWindow, { 
         properties: ['openDirectory', 'createDirectory'] 
     });
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+    createWindow();
+
+    // FIX LỖI 1: Phím tắt Control + Command + V
+    globalShortcut.register('CommandOrControl+Control+V', () => {
+        createClipboardWindow();
+        
+        // Kiểm tra an toàn trước khi cập nhật Switch ở mainWindow
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('clipboard-window-status', true);
+        }
+    });
+});
+
+app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
+});
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
