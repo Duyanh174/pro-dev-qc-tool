@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="../styles/knotion/knotion.css">
     <link rel="stylesheet" href="../styles/moodFlow/moodFlow.css">
     <link rel="stylesheet" href="../styles/clipboard/clipboard.css">
+    <link rel="stylesheet" href="../styles/feedback/feedback.css">
+    <link rel="stylesheet" href="../styles/tutorial/tutorial.css">
 </head>
 <body>
     <div class="app-container">
@@ -19,6 +21,7 @@
                 <div class="nav-item" id="nav-format" onclick="showTab('format')" title="Format Code">🧹</div>
                 <div class="nav-item" id="nav-knotion" onclick="showTab('knotion')" title="Knotion">🧠</div>
                 <div class="nav-item" id="nav-clipboard" onclick="showTab('clipboard')" title="Clipboard Manager">📋</div>
+                <div class="nav-item" id="nav-feedback" onclick="showTab('feedback')" title="Feedback">💬</div>
                 <div class="nav-item" id="nav-settings" onclick="showTab('settings')" title="Settings">⚙️</div>
             </div>
         </nav>
@@ -111,6 +114,12 @@
                     </div>
             </div>
 
+            <!-- tab feedback -->
+            <div id="tab-feedback" class="tab-content" style="display:none">
+                <div id="feedback-container" class="feedback-wrapper">
+                    </div>
+            </div>
+
             <!-- tab setting -->
             <div id="tab-settings" class="tab-content" style="display:none">
                 <div class="settings-wrapper">
@@ -119,8 +128,9 @@
                     </header>
                     <div class="module-selector-nav">
                         <button class="mod-btn active" onclick="showModuleSettings('convert', event)">Compiler</button>
-                        <button class="mod-btn" onclick="showModuleSettings('overlay', event)">Overlay</button>
-                        <button class="mod-btn" onclick="showModuleSettings('ruler', event)">Ruler</button>
+                        <!-- <button class="mod-btn" onclick="showModuleSettings('overlay', event)">Overlay</button>
+                        <button class="mod-btn" onclick="showModuleSettings('ruler', event)">Ruler</button> -->
+                        <button class="mod-btn" onclick="showModuleSettings('tutorial', event)">Tutorial</button>
                     </div>
                     
                     <div id="mod-settings-convert" class="mod-settings-panel">
@@ -155,6 +165,134 @@
                                     <input type="checkbox" id="cfg-web" checked onchange="saveCfg()">
                                     <span class="slider"></span>
                                 </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mod-settings-tutorial" class="mod-settings-panel" style="display:none">
+                        <div class="card config-card">
+                            <!-- <h3 class="card-title">User Guide - Step by Step</h3> -->
+                            <div class="tutorial-grid">
+                                <aside class="tutorial-nav">
+                                    <button class="tut-nav-btn active" onclick="showTutSection('tut-compiler', event)">✨ Compiler</button>
+                                    <button class="tut-nav-btn" onclick="showTutSection('tut-codepen', event)">📝 CodePen</button>
+                                    <button class="tut-nav-btn" onclick="showTutSection('tut-format', event)">🧹 Format</button>
+                                    <button class="tut-nav-btn" onclick="showTutSection('tut-knotion', event)">🧠 Knotion</button>
+                                    <button class="tut-nav-btn" onclick="showTutSection('tut-clipboard', event)">📋 Clipboard</button>
+                                    <button class="tut-nav-btn" onclick="showTutSection('tut-feedback', event)">💬 Feedback</button>
+                                </aside>
+
+                                <article class="tutorial-content">
+                                    
+                                    <div id="tut-compiler" class="tut-section">
+                                        <div class="tut-intro-header">
+                                            <h3>✨ SCSS Compiler Engine</h3>
+                                            <p>Hướng dẫn biên dịch mã nguồn SCSS sang CSS tiêu chuẩn với công nghệ Autoprefixer tích hợp.</p>
+                                        </div>
+                                    
+                                        <div class="step-item">
+                                            <h4>Quản lý Dự án (Project)</h4>
+                                            <p>Trước khi bắt đầu, hãy nhấn vào nút <b>(+)</b> ở bảng Projects bên trái để tạo một dự án mới. Việc này giúp bạn lưu trữ cấu hình folder riêng biệt cho từng website khác nhau.</p>
+                                            <div class="step-img">
+                                                <img src="../assets/tut/compiler-step1-project.png" alt="Khởi tạo dự án">
+                                            </div>
+                                        </div>
+                                    
+                                        <div class="step-item">
+                                            <h4>Chọn Thư mục Nguồn (Source SCSS)</h4>
+                                            <p>Nhấn <b>📂 Select SCSS Directory</b>. Hệ thống sẽ theo dõi (Watch) toàn bộ thay đổi bên trong thư mục này. Ngay khi bạn nhấn <code>Ctrl + S</code> trong trình soạn thảo, Engine sẽ tự động làm việc.</p>
+                                            <div class="step-img">
+                                                <img src="../assets/tut/compiler-step2-input.png" alt="Chọn folder đầu vào">
+                                            </div>
+                                        </div>
+                                    
+                                        <div class="step-item">
+                                            <h4>Cấu hình Chế độ Xuất (Output Mode)</h4>
+                                            <p>Bạn có hai lựa chọn quan trọng tại thẻ <b>Main Controls</b>:</p>
+                                            <ul class="tut-list">
+                                                <li><b>At Place:</b> File <code>.css</code> sẽ được tạo ngay bên cạnh file <code>.scss</code> tương ứng.</li>
+                                                <li><b>Custom Path:</b> Bạn có thể chọn một thư mục <code>dist/css</code> riêng biệt để giữ cấu hình dự án gọn gàng.</li>
+                                            </ul>
+                                            <div class="step-img">
+                                                <img src="../assets/tut/compiler-step3-mode.png" alt="Cấu hình đầu ra">
+                                            </div>
+                                        </div>
+
+                                        <div class="step-item">
+                                            <h4>Cấu trúc dự án nhiều file (Advanced)</h4>
+                                            <p>Để quản lý hiệu quả, hãy sử dụng kỹ thuật <b>Sass Partials</b>:</p>
+                                            <ul class="tut-list">
+                                                <li><b>File có dấu gạch dưới (_filename.scss):</b> Engine sẽ chỉ theo dõi để biên dịch vào file chính, không xuất ra file CSS riêng lẻ (giúp gọn thư mục).</li>
+                                                <li><b>File chính (main.scss):</b> Dùng lệnh <code>@use 'folder/filename';</code> để gộp các file nhỏ.</li>
+                                                <li><b>Recursive Watch:</b> Engine tự động theo dõi tất cả thư mục con, bạn không cần chọn lại folder khi thêm file mới.</li>
+                                            </ul>
+                                            <div class="step-img">
+                                                <img src="../assets/tut/compiler-multiple-files.png" alt="Cấu trúc file chuyên nghiệp">
+                                            </div>
+                                        </div>
+                                    
+                                        <div class="step-item">
+                                            <h4>Theo dõi Live Activity</h4>
+                                            <p>Cửa sổ Terminal phía dưới sẽ hiển thị trạng thái biên dịch theo thời gian thực. Nếu có lỗi cú pháp (Sass Error), thông báo sẽ hiện đỏ kèm theo dòng bị lỗi để bạn sửa chữa ngay lập tức.</p>
+                                            <div class="step-img">
+                                                <img src="../assets/tut/compiler-step4-logs.png" alt="Theo dõi nhật ký">
+                                            </div>
+                                        </div>
+                                    
+                                        <div class="step-item">
+                                            <h4>Tối ưu hóa (Autoprefixer & HUD)</h4>
+                                            <p>Đừng quên vào tab <b>Settings</b> để bật <b>Autoprefixer</b> (tự động thêm prefix cho IE, Chrome, Safari) và <b>Browser Error HUD</b> để xem thông báo lỗi ngay trên trình duyệt mà không cần quay lại App.</p>
+                                            <div class="step-img">
+                                                <img src="../assets/tut/compiler-step5-settings.png" alt="Cấu hình nâng cao">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div id="tut-codepen" class="tut-section" style="display:none">
+                                        <div class="step-item">
+                                            <h4>Step 1: Soạn thảo Real-time</h4>
+                                            <p>Nhập HTML/CSS/JS vào 3 khung tương ứng. Kết quả sẽ hiện ngay lập tức bên phải.</p>
+                                            <div class="step-img"><img src="../assets/tut/codepen-1.png" alt="Playground"></div>
+                                        </div>
+                                    </div>
+
+                                    <div id="tut-format" class="tut-section" style="display:none">
+                                        <div class="step-item">
+                                            <h4>Step 1: Dán và Format</h4>
+                                            <p>Dán đoạn code lộn xộn vào khung. Hệ thống Prettier sẽ tự động làm sạch code của bạn.</p>
+                                            <div class="step-img"><img src="../assets/tut/format-1.png" alt="Dán code"></div>
+                                        </div>
+                                    </div>
+
+                                    <div id="tut-knotion" class="tut-section" style="display:none">
+                                        <div class="step-item">
+                                            <h4>Step 1: Tạo Block mới</h4>
+                                            <p>Sử dụng hệ thống Block của Editor.js để viết ghi chú, bảng biểu và code block.</p>
+                                            <div class="step-img"><img src="../assets/tut/knotion-1.png" alt="Notion style"></div>
+                                        </div>
+                                    </div>
+
+                                    <div id="tut-clipboard" class="tut-section" style="display:none">
+                                        <div class="step-item">
+                                            <h4>Step 1: Chế độ Window</h4>
+                                            <p>Gạt Switch sang "Window" để tách Clipboard thành cửa sổ nhỏ luôn nổi (Always on Top).</p>
+                                            <div class="step-img"><img src="../assets/tut/clipboard-1.png" alt="Floating Window"></div>
+                                        </div>
+                                        <div class="step-item">
+                                            <h4>Step 2: Phím tắt</h4>
+                                            <p>Sử dụng tổ hợp Control + Cmd + V để mở nhanh Clipboard mọi lúc.</p>
+                                            <div class="step-img"><img src="../assets/tut/clipboard-2.png" alt="Hotkey"></div>
+                                        </div>
+                                    </div>
+
+                                    <div id="tut-feedback" class="tut-section" style="display:none">
+                                        <div class="step-item">
+                                            <h4>Step 1: Gửi góp ý</h4>
+                                            <p>Điền thông tin và nhấn "Gửi". Dữ liệu sẽ được chuyển thẳng tới Google Forms.</p>
+                                            <div class="step-img"><img src="../assets/tut/feedback-1.png" alt="Feedback Form"></div>
+                                        </div>
+                                    </div>
+
+                                </article>
                             </div>
                         </div>
                     </div>
@@ -208,12 +346,31 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
+<script>
+    // Hàm chuyển đổi chức năng trong Tutorial
+    function showTutSection(sectionId, event) {
+        // Ẩn tất cả section
+        document.querySelectorAll('.tut-section').forEach(s => s.style.display = 'none');
+        // Hiện section được chọn
+        document.getElementById(sectionId).style.display = 'block';
+        
+        // Xóa class active ở các nút
+        document.querySelectorAll('.tut-nav-btn').forEach(b => b.classList.remove('active'));
+        // Thêm active cho nút hiện tại
+        event.currentTarget.classList.add('active');
+    }
+
+    // Đảm bảo hàm showModuleSettings hỗ trợ panel 'tutorial'
+    // Bạn cần kiểm tra trong file renderer.js xem hàm showModuleSettings đã xử lý chưa
+    // Nếu chưa, hãy bổ sung logic ẩn/hiện mod-settings-tutorial vào đó.
+</script>
     <script src="../renderer/moodFlow.js"></script>
     <script src="../renderer/renderer.js"></script>
     <script src="../renderer/codepen.js" ></script>
     <script src="../renderer/format.js"></script>
     <script src="../renderer/knotion.js"></script>
     <script src="../renderer/clipboard.js"></script>
+    <script src="../renderer/feedback.js"></script>
 
 </body>
 </html>

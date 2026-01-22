@@ -1,0 +1,212 @@
+/* --- Khung Layout Tutorial --- */
+.tutorial-grid {
+    display: flex;
+    /* Sử dụng vh để tự động co giãn theo chiều cao app, tránh bị tràn hoặc hụt */
+    height: calc(100vh - 228px); 
+    min-height: 400px;
+    /* margin-top: 20px; */
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #efeff4;
+    overflow: hidden; /* Cấm grid tổng cuộn để các con cuộn riêng */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+}
+
+/* 2. Sidebar: Cho phép cuộn nếu danh sách tab quá dài */
+.tutorial-nav {
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 15px;
+    background: #f8f8fa;
+    border-right: 1px solid #efeff4;
+    overflow-y: auto; 
+    flex-shrink: 0;
+}
+
+.tut-nav-btn {
+    padding: 12px 16px;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: #8e8e93;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tut-nav-btn:hover {
+    background: #efeff4;
+    color: #1c1c1e;
+}
+
+.tut-nav-btn.active {
+    background: #007aff;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
+}
+
+/* --- Vùng nội dung bên phải --- */
+.tutorial-content {
+    flex: 1;
+    height: 100%; /* Bắt buộc chiếm hết chiều cao của grid */
+    overflow-y: auto; /* Cho phép cuộn dọc */
+    overflow-x: hidden; /* Cấm cuộn ngang */
+    padding: 0px 20px;
+    scroll-behavior: smooth;
+    background: #ffffff;
+    /* Fix cho một số phiên bản Electron/Chrome cũ */
+    display: block; 
+    position: relative;
+}
+
+/* Tùy chỉnh thanh cuộn cho chuyên nghiệp */
+.tutorial-content::-webkit-scrollbar {
+    width: 6px;
+}
+.tutorial-content::-webkit-scrollbar-thumb {
+    background: #d1d1d6;
+    border-radius: 10px;
+}
+
+/* --- Các bước hướng dẫn (Steps) --- */
+.tut-section {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.step-item {
+    margin-bottom: 40px;
+    position: relative;
+}
+
+.step-item h4 {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1c1c1e;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Badge số thứ tự (ví dụ: Step 1) */
+.step-item h4::before {
+    content: "Step";
+    font-size: 10px;
+    background: #e5e5ea;
+    padding: 2px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    color: #8e8e93;
+}
+
+.step-item p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #3a3a3c;
+    margin-bottom: 20px;
+}
+
+/* --- Khung chứa hình ảnh --- */
+.step-img {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid #efeff4;
+    overflow: hidden;
+    background: #f2f2f7;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease;
+}
+
+.step-img:hover {
+    transform: scale(1.01);
+}
+
+.step-img img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+}
+
+/* Placeholder khi chưa có ảnh */
+.step-img:empty::before {
+    content: "📷 Image Preview Placeholder";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #aeaeb2;
+    font-weight: 500;
+    font-size: 13px;
+    background: linear-gradient(135deg, #f2f2f7, #e5e5ea);
+}
+
+/* --- Animation --- */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Responsive cho Window nhỏ --- */
+@media (max-width: 800px) {
+    .tutorial-grid {
+        flex-direction: column;
+        height: auto;
+    }
+    .tutorial-nav {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid #efeff4;
+    }
+    .tut-nav-btn {
+        white-space: nowrap;
+    }
+}
+
+
+.tut-list {
+    margin: 10px 0 20px 20px;
+    padding: 0;
+    list-style-type: none;
+}
+
+.tut-list li {
+    font-size: 14px;
+    color: #48484a;
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.tut-list li::before {
+    content: "•";
+    color: #007aff;
+    font-weight: bold;
+    display: inline-block;
+    width: 1em;
+    margin-left: -1em;
+}
+
+.tut-intro-header {
+    margin-bottom: 0px;
+    padding-bottom: 0px;
+    border-bottom: 1px solid #efeff4;
+    color: black;
+}
+
+.tut-intro-header h3 {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 5px;
+    color: black;
+}

@@ -198,7 +198,7 @@ body {
 }
 
 .workspace-header {
-    margin-bottom: 30px;
+    margin-bottom: 0px;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -555,7 +555,7 @@ body {
 
 /* --- SETTINGS TAB LAYOUT --- */
 .settings-wrapper {
-    max-width: 800px;
+    max-width: 980px;
     margin: 0 auto;
     width: 100%;
 }
@@ -564,7 +564,7 @@ body {
 .module-selector-nav {
     display: flex;
     gap: 12px;
-    margin-bottom: 30px;
+    margin-bottom: 15px;
     background: rgba(255, 255, 255, 0.03);
     padding: 6px;
     border-radius: 14px;
@@ -597,7 +597,7 @@ body {
 
 /* Card chứa các dòng cài đặt */
 .config-card {
-    padding: 10px 25px;
+    padding: 10px 10px;
     background: var(--bg-card);
     border-radius: 20px;
     border: 1px solid var(--border);
@@ -607,8 +607,8 @@ body {
     font-size: 14px;
     font-weight: 700;
     color: var(--accent);
-    margin-top: 20px;
-    margin-bottom: 20px;
+    margin-top: 0px;
+    margin-bottom: 0px;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
