@@ -453,7 +453,7 @@ body {
     height: 0;
 }
 
-.slider {
+#tab-settings .slider { 
     position: absolute;
     cursor: pointer;
     inset: 0;
@@ -462,7 +462,7 @@ body {
     border-radius: 34px;
 }
 
-.slider:before {
+#tab-settings .slider:before {
     position: absolute;
     content: "";
     height: 22px;
@@ -475,11 +475,11 @@ body {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 }
 
-input:checked+.slider {
+#tab-settings input:checked+.slider {
     background-color: var(--success);
 }
 
-input:checked+.slider:before {
+#tab-settings input:checked+.slider:before {
     transform: translateX(20px);
 }
 
@@ -660,7 +660,7 @@ input:checked+.slider:before {
     height: 0;
 }
 
-.slider {
+#tab-settings .slider {
     position: absolute;
     cursor: pointer;
     top: 0;
@@ -674,7 +674,7 @@ input:checked+.slider:before {
 }
 
 /* Nút tròn trắng bên trong */
-.slider:before {
+#tab-settings .slider:before {
     position: absolute;
     content: "";
     height: 24px;
@@ -689,23 +689,23 @@ input:checked+.slider:before {
 }
 
 /* Hiệu ứng khi được bật */
-input:checked+.slider {
+#tab-settings input:checked+.slider {
     background-color: var(--success);
     /* Màu xanh Emerald của bạn */
 }
 
 /* Di chuyển nút tròn khi bật */
-input:checked+.slider:before {
+#tab-settings input:checked+.slider:before {
     transform: translateX(22px);
 }
 
 /* Hiệu ứng nhấn giữ (Active state) */
-.switch:active .slider:before {
+#tab-settings .switch:active .slider:before {
     width: 28px;
     /* Nút tròn hơi dài ra một chút khi nhấn (giống iPhone thật) */
 }
 
-input:checked:active+.slider:before {
+#tab-settings input:checked:active+.slider:before {
     transform: translateX(18px);
     /* Điều chỉnh lại vị trí khi nhấn giữ */
 }

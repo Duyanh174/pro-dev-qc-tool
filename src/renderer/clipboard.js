@@ -1,6 +1,5 @@
 /**
- * CLIPBOARD MANAGER - UNIVERSAL SYNC & RENDER (FIXED CROSS-WINDOW SYNC)
- * Bản sửa lỗi triệt để đồng bộ 2 chiều giữa App chính và Window standalone
+ * CLIPBOARD MANAGER - UNIVERSAL SYNC & RENDER (EXPANDABLE ITEMS)
  */
 window.ClipboardFlow = {
     data: { recent: [], pinned: [] },
@@ -29,10 +28,9 @@ window.ClipboardFlow = {
             }
         }, 1000);
 
-        // SYNC: Xoá/Ghim đồng bộ giữa các cửa sổ (SỬA ĐỔI TẠI ĐÂY)
+        // SYNC: Xoá/Ghim đồng bộ giữa các cửa sổ
         window.addEventListener('storage', (e) => {
             if (e.key === 'knotion_clipboard') {
-                // Khi localStorage thay đổi, ép buộc nạp lại và vẽ lại UI
                 this.loadData();
                 this.updateUI();
             }
@@ -48,12 +46,10 @@ window.ClipboardFlow = {
         this.render();
     },
 
-    // ƯU TIÊN localStorage ĐỂ ĐỒNG BỘ 2 CHIỀU (SỬA ĐỔI TẠI ĐÂY)
     loadData() {
         const saved = localStorage.getItem('knotion_clipboard');
         if (saved) {
             this.data = JSON.parse(saved);
-            // Nếu đang ở app chính, cập nhật luôn vào Knotion để đồng bộ file lưu
             if (window.Knotion && window.Knotion.data) {
                 window.Knotion.data.clipboard = this.data;
             }
@@ -74,19 +70,16 @@ window.ClipboardFlow = {
     },
 
     saveAndRefresh() {
-        // Cập nhật localStorage trước để kích hoạt sự kiện storage cho các cửa sổ khác
         localStorage.setItem('knotion_clipboard', JSON.stringify(this.data));
-
         if (window.Knotion) {
             if (!window.Knotion.data) window.Knotion.data = {};
             window.Knotion.data.clipboard = this.data;
             window.Knotion.saveData();
         }
-        
         this.updateUI();
     },
 
-    // 3. RENDER UI - KHẮC PHỤC LỖI CONTAINER TRỐNG
+    // 3. RENDER UI
     render() {
         const container = document.getElementById('clipboard-container');
         if (!container) return;
@@ -94,7 +87,6 @@ window.ClipboardFlow = {
         const fs = require('fs');
         const path = require('path');
         
-        // Xác định đường dẫn UI linh hoạt
         const pathFromMain = path.resolve(__dirname, '..', 'ui', 'features', 'clipboard.html');
         const pathStandalone = path.join(__dirname, 'clipboard.html');
         const pathStandaloneAlt = path.resolve(__dirname, 'features', 'clipboard.html');
@@ -130,6 +122,7 @@ window.ClipboardFlow = {
         if (pc) pc.innerText = this.data.pinned.length;
     },
 
+    // SỬA ĐỔI TẠI ĐÂY: onclick gọi toggleExpand thay vì copyToSystem trực tiếp
     renderListItems(id, items, type) {
         const container = document.getElementById(id);
         if (items.length === 0) {
@@ -139,7 +132,7 @@ window.ClipboardFlow = {
 
         container.innerHTML = items.map(item => `
             <div class="cb-item">
-                <div class="cb-item-body" onclick="ClipboardFlow.copyToSystem(this.parentElement, '${item.type}')">
+                <div class="cb-item-body" onclick="ClipboardFlow.toggleExpand(this)">
                     ${item.type === 'text' 
                         ? `<span class="cb-text">${item.content.replace(/</g, "&lt;")}</span>` 
                         : `<img src="${item.content}" class="cb-img">`}
@@ -157,6 +150,18 @@ window.ClipboardFlow = {
                 </div>
             </div>
         `).join('');
+    },
+
+    // THÊM MỚI: Logic hiển thị toàn bộ nội dung
+    toggleExpand(el) {
+        const textEl = el.querySelector('.cb-text');
+        if (textEl) {
+            // Toggle class 'expanded'
+            const isExpanded = textEl.classList.toggle('is-expanded');
+            // Inline style fallback if CSS is not loaded
+            textEl.style.whiteSpace = isExpanded ? 'normal' : 'nowrap';
+            textEl.style.webkitLineClamp = isExpanded ? 'unset' : '1';
+        }
     },
 
     // 4. THAO TÁC HỆ THỐNG
