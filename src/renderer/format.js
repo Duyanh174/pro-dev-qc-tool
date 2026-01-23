@@ -120,6 +120,30 @@
             }
         },
 
+        // --- CHỨC NĂNG MỚI: HTML TO TEXT ---
+        toPlaintext() {
+            const inputCode = this.editors.input.getValue();
+            if (!inputCode.trim()) return;
+
+            try {
+                // Sử dụng DOMParser để bóc tách text sạch từ HTML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(inputCode, 'text/html');
+                
+                // Lấy text content (loại bỏ script/style tự động)
+                let text = doc.body.textContent || doc.body.innerText || "";
+                
+                // Xử lý khoảng trắng thừa
+                text = text.replace(/[ \t]+/g, ' ') // Thay nhiều tab/space bằng 1 space
+                           .replace(/\n\s*\n/g, '\n\n') // Giữ tối đa 2 dòng trống
+                           .trim();
+
+                this.editors.output.setValue(text, -1);
+            } catch (error) {
+                this.editors.output.setValue(`❌ LỖI CHUYỂN ĐỔI TEXT:\n\n${error.message}`, -1);
+            }
+        },
+
         // --- 4. CHỨC NĂNG JSON TO CSV (MỚI) ---
         toCSV() {
             const inputCode = this.editors.input.getValue();

@@ -4,35 +4,57 @@ window.MoodFlow = {
     activeDate: null,
     activeIndex: 0,
     tempScore: 3,
-    lastCheckedDate: new Date().getDate(), // Lưu ngày cuối cùng ứng dụng ghi nhận
+    lastCheckedDate: new Date().getDate(),
 
     renderDashboard(container) {
         const fs = require('fs');
         const path = require('path');
         container.innerHTML = fs.readFileSync(path.join(__dirname, '../ui/features/moodFlow.html'), 'utf8');
-        this.loadBirthday();
-        this.setViewMode(this.viewMode);
         
-        // BẮT ĐẦU LOGIC REAL-TIME
+        this.loadBirthday();
+        this.loadTheme(); // LOAD THEME KHI KHỞI TẠO
+        this.setViewMode(this.viewMode);
         this.initRealTimeTracker();
     },
 
-    /**
-     * Logic theo dõi ngày mới Real-time
-     */
+    // --- LOGIC THEME ---
+    loadTheme() {
+        const theme = window.Knotion.data.user_theme || 'dino';
+        document.getElementById('mf-theme-select').value = theme;
+        this.updateMoodIcons(); // Cập nhật icon trong modal ngay lập tức
+    },
+
+    changeTheme(theme) {
+        window.Knotion.data.user_theme = theme;
+        window.Knotion.saveData();
+        this.updateMoodIcons();
+        this.renderCalendar(); // Vẽ lại lịch để cập nhật Icon ở lịch tuần
+    },
+
+    getMoodImagePath(score) {
+        const theme = window.Knotion.data.user_theme || 'dino';
+        return `../assets/${theme}0${score}.png`;
+    },
+
+    updateMoodIcons() {
+        // Cập nhật các icon trong bước chọn cảm xúc (Step 1)
+        const images = document.querySelectorAll('.mood-btn-img');
+        images.forEach(img => {
+            const score = img.getAttribute('data-score');
+            img.src = this.getMoodImagePath(score);
+        });
+    },
+
+    // --- CÁC LOGIC CŨ GIỮ NGUYÊN ---
     initRealTimeTracker() {
-        // 1. Kiểm tra mỗi phút xem đã sang ngày mới chưa
         setInterval(() => {
             const now = new Date();
             if (now.getDate() !== this.lastCheckedDate) {
                 this.lastCheckedDate = now.getDate();
-                this.currentDate = new Date(); // Cập nhật mốc thời gian hệ thống
-                this.renderCalendar(); // Vẽ lại lịch để cập nhật ô "Today"
-                console.log("Mood Pixel: Đã tự động cập nhật sang ngày mới!");
+                this.currentDate = new Date();
+                this.renderCalendar();
             }
-        }, 60000); // 60.000ms = 1 phút
-
-        // 2. Kiểm tra khi người dùng quay lại tab (sau khi để máy sleep hoặc chuyển tab khác)
+        }, 60000);
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 const now = new Date();
@@ -131,7 +153,7 @@ window.MoodFlow = {
             const last = data.entries[data.entries.length - 1];
             px.classList.add(`s${last.score}`);
             if (this.viewMode === 'week') {
-                px.innerHTML = `<div class="mood-emoji">${this.getEmoji(last.score)}</div><div class="day-sub">${sub}</div>`;
+                px.innerHTML = `${this.getEmoji(last.score)}<div class="day-sub">${sub}</div>`;
             } else if (this.viewMode === 'month') {
                 px.innerText = label;
             }
@@ -187,6 +209,9 @@ window.MoodFlow = {
         document.getElementById('modal-date-title').innerText = `Ngày ${dateKey}`;
         document.getElementById('mf-modal').style.display = 'flex';
         document.getElementById('modal-birthday-msg').style.display = this.isBirthday(new Date(dateKey)) ? 'block' : 'none';
+        
+        this.updateMoodIcons(); // Đảm bảo icon trong Modal luôn đúng theme khi mở
+        
         if (data && data.entries?.length > 0) this.showDetail(data.entries.length - 1);
         else this.startFlow('new');
     },
@@ -197,7 +222,10 @@ window.MoodFlow = {
         document.getElementById('modal-view-state').style.display = 'block';
         document.getElementById('modal-history-state').style.display = 'none';
         document.getElementById('modal-entry-flow').style.display = 'none';
-        document.getElementById('view-img').src = `../assets/dino0${entry.score}.png`;
+        
+        // SỬA: Lấy ảnh theo theme
+        document.getElementById('view-img').src = this.getMoodImagePath(entry.score);
+        
         document.getElementById('view-time').innerText = `Lúc ${entry.time}`;
         document.getElementById('view-note').innerText = entry.note || 'Không có ghi chú.';
         document.getElementById('btn-show-history').style.display = data.entries.length > 1 ? 'block' : 'none';
@@ -210,7 +238,9 @@ window.MoodFlow = {
         [...data.entries].reverse().forEach((e, i) => {
             const item = document.createElement('div');
             item.className = 'history-item';
-            item.innerHTML = `<img src="../assets/dino0${e.score}.png"><div><div class="h-time">${e.time}</div><div class="h-note">${e.note || '...'}</div></div>`;
+            // SỬA: Lấy ảnh theo theme
+            const imgPath = this.getMoodImagePath(e.score);
+            item.innerHTML = `<img src="${imgPath}"><div><div class="h-time">${e.time}</div><div class="h-note">${e.note || '...'}</div></div>`;
             item.onclick = () => this.showDetail(data.entries.length - 1 - i);
             list.appendChild(item);
         });
@@ -243,16 +273,11 @@ window.MoodFlow = {
     },
 
     getEmoji(s) {
-        // Trả về chuỗi HTML image thay vì Emoji
-        const moodImages = {
-            5: '<div class="week-wrap"><img class="week-img" src="../assets/dino05.png" class="mf-icon-s"></div>',
-            4: '<div class="week-wrap"><img class="week-img" src="../assets/dino04.png" class="mf-icon-s"></div> ',
-            3: '<div class="week-wrap"><img class="week-img" src="../assets/dino03.png" class="mf-icon-s"></div> ',
-            2: '<div class="week-wrap"><img class="week-img" src="../assets/dino02.png" class="mf-icon-s"></div> ',
-            1: '<div class="week-wrap"><img class="week-img" src="../assets/dino01.png" class="mf-icon-s"></div>'
-        };
-        return moodImages[s] || '';
-    },    formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; },
+        const imgPath = this.getMoodImagePath(s);
+        return `<div class="week-wrap"><img class="week-img" src="${imgPath}" class="mf-icon-s"></div>`;
+    },
+
+    formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; },
     hideTooltip() { const tt = document.getElementById('mf-action-tooltip'); if(tt) tt.style.display = 'none'; },
     changePage(v) { 
         if(this.viewMode === 'month') this.currentDate.setMonth(this.currentDate.getMonth() + v);
@@ -264,13 +289,14 @@ window.MoodFlow = {
         document.getElementById('modal-view-state').style.display='none'; 
         document.getElementById('modal-history-state').style.display='none'; 
         document.getElementById('modal-entry-flow').style.display='block'; 
-        // SỬA TẠI ĐÂY: Reset giá trị note mỗi khi mở luồng nhập liệu mới
         document.getElementById('entry-note').value = ''; 
+        this.updateMoodIcons(); // Đồng bộ icon theo theme
         this.showStep(1); 
     },
     showStep(n) { document.getElementById('step-1').style.display = n === 1 ? 'block' : 'none'; document.getElementById('step-2').style.display = n === 2 ? 'block' : 'none'; },
     nextStep(s) { this.tempScore = s; this.showStep(2); },
     backToStep1() { this.showStep(1); },
     closeModal() { document.getElementById('mf-modal').style.display = 'none'; },
-    deleteDayData() { if(confirm("Xóa toàn bộ dữ liệu ngày này?")) { delete window.Knotion.data.moods[this.activeDate]; window.Knotion.saveData(); this.closeModal(); this.renderCalendar(); } }
+    deleteDayData() { if(confirm("Xóa toàn bộ dữ liệu ngày này?")) { delete window.Knotion.data.moods[this.activeDate]; window.Knotion.saveData(); this.closeModal(); this.renderCalendar(); } },
+    getTodayKey() { return this.formatDate(new Date()); }
 };

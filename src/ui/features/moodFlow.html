@@ -1,16 +1,30 @@
 <div class="mf-module">
     <header class="mf-header">
-        <div class="mf-header-content">
-            <h1>Mood Pixel</h1>
-            <div class="mf-birthday-card">
-                <div class="bd-label">🎂 Nhập ngày sinh của bạn vào đây nhé:</div>
+        <div class="mf-header-content" style="display: flex; gap: 15px; align-items: flex-end;">
+            <div>
+                <h1>Mood Pixel</h1>
+                <div class="mf-birthday-card">
+                    <div class="bd-label">🎂 Nhập ngày sinh của bạn vào đây nhé:</div>
+                    <div class="mf-birthday-inputs">
+                        <input type="text" id="bd-day" placeholder="DD" maxlength="2" oninput="MoodFlow.autoFocus(this, 'bd-month')">
+                        <span>/</span>
+                        <input type="text" id="bd-month" placeholder="MM" maxlength="2" oninput="MoodFlow.autoFocus(this, 'bd-year')">
+                        <span>/</span>
+                        <input type="text" id="bd-year" placeholder="YYYY" maxlength="4">
+                        <button class="mf-btn-save-bd" onclick="MoodFlow.saveBirthday()">Lưu</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mf-birthday-card" style="min-width: 150px;">
+                <div class="bd-label">🎨 Chọn bộ Icon:</div>
                 <div class="mf-birthday-inputs">
-                    <input type="text" id="bd-day" placeholder="DD" maxlength="2" oninput="MoodFlow.autoFocus(this, 'bd-month')">
-                    <span>/</span>
-                    <input type="text" id="bd-month" placeholder="MM" maxlength="2" oninput="MoodFlow.autoFocus(this, 'bd-year')">
-                    <span>/</span>
-                    <input type="text" id="bd-year" placeholder="YYYY" maxlength="4">
-                    <button class="mf-btn-save-bd" onclick="MoodFlow.saveBirthday()">Lưu</button>
+                    <select id="mf-theme-select" onchange="MoodFlow.changeTheme(this.value)" style="width: 100%; border: none; background: transparent; font-weight: 700; outline: none; cursor: pointer;">
+                        <option value="dino">Khủng long (Dino)</option>
+                        <option value="alien">Người ngoài hành tinh</option>
+                        <option value="snake">Con rắn độc</option>
+                        <option value="dragon">Rồng Châu Á</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -105,12 +119,12 @@
                     <div id="modal-entry-flow" class="state-anim" style="display:none">
                         <div id="step-1" class="entry-step">
                             <label class="entry-label">Bạn đang cảm thấy thế nào?</label>
-                            <div class="mood-selection-wrapper">
-                                <button class="mood-item" onclick="MoodFlow.nextStep(1)"><img src="../assets/dino01.png"><span>Thật sự rất buồn</span></button>
-                                <button class="mood-item" onclick="MoodFlow.nextStep(2)"><img src="../assets/dino02.png"><span>buồn một chút</span></button>
-                                <button class="mood-item" onclick="MoodFlow.nextStep(3)"><img src="../assets/dino03.png"><span>Bình thường</span></button>
-                                <button class="mood-item" onclick="MoodFlow.nextStep(4)"><img src="../assets/dino04.png"><span>hạnh phúc quá</span></button>
-                                <button class="mood-item" onclick="MoodFlow.nextStep(5)"><img src="../assets/dino05.png"><span>Tuyệt vời</span></button>
+                            <div class="mood-selection-wrapper" id="mood-button-container">
+                                <button class="mood-item" onclick="MoodFlow.nextStep(1)"><img class="mood-btn-img" data-score="1" src="../assets/dino01.png"><span>Thật sự rất buồn</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(2)"><img class="mood-btn-img" data-score="2" src="../assets/dino02.png"><span>buồn một chút</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(3)"><img class="mood-btn-img" data-score="3" src="../assets/dino03.png"><span>Bình thường</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(4)"><img class="mood-btn-img" data-score="4" src="../assets/dino04.png"><span>hạnh phúc quá</span></button>
+                                <button class="mood-item" onclick="MoodFlow.nextStep(5)"><img class="mood-btn-img" data-score="5" src="../assets/dino05.png"><span>Tuyệt vời</span></button>
                             </div>
                         </div>
                         <div id="step-2" class="entry-step" style="display:none">

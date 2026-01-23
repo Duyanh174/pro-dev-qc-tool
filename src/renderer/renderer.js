@@ -125,23 +125,17 @@ const App = {
 };
 
 const Compiler = {
-    async run(file, projectId) {
+    // Hàm thực hiện biên dịch thực tế
+    async compileAction(file, projectId) {
         const project = App.projects.find(p => p.id === projectId);
-        if (!project || !project.inputDir) return;
-
-        if (path.basename(file).startsWith('_')) {
-            this.recompileMainFiles(project.inputDir, projectId);
-            return; 
-        }
-
-        if (!file.endsWith('.scss')) return;
+        if (!project) return;
 
         try {
             const target = this.getOutPath(file, project);
             const result = await sass.compileAsync(file, { 
                 style: 'expanded', 
                 sourceMap: true,
-                loadPaths: [project.inputDir] 
+                loadPaths: [project.inputDir, path.dirname(file)] // Thêm path hiện tại để @use chính xác hơn
             });
 
             let finalCss = result.css;
@@ -152,32 +146,55 @@ const Compiler = {
             fs.writeFileSync(target, finalCss);
             
             this.markErrorAsFixed(project, file);
-
-            UI.log(projectId, `Biên dịch thành công: ${path.basename(target)}`, 'success');
+            UI.log(projectId, `Cập nhật thành công: ${path.basename(target)}`, 'success');
 
             if (App.config.web) {
                 this.broadcast({ type: 'reload' }); 
-                this.broadcast({ type: 'clear' });
             }
         } catch (e) {
             this.handleError(projectId, file, e);
         }
     },
 
-    recompileMainFiles(dir, projectId) {
-        try {
-            const files = fs.readdirSync(dir);
-            files.forEach(f => {
-                const fp = path.join(dir, f);
-                if (f.endsWith('.scss') && !f.startsWith('_')) {
-                    this.run(fp, projectId);
-                }
-            });
-        } catch (e) {
-            console.error("Lỗi quét file recompile:", e);
+    // Hàm điều hướng khi có sự thay đổi file
+    async run(file, projectId) {
+        const project = App.projects.find(p => p.id === projectId);
+        if (!project || !project.inputDir) return;
+
+        // Nếu là file partial (ví dụ: _variables.scss)
+        if (path.basename(file).startsWith('_')) {
+            UI.log(projectId, `Phát hiện thay đổi tại file con: ${path.basename(file)}`, 'warn');
+            // Gọi hàm quét và biên dịch lại các file chính
+            await this.recompileMainFiles(project.inputDir, projectId);
+        } else if (file.endsWith('.scss')) {
+            // Nếu là file chính, biên dịch trực tiếp
+            await this.compileAction(file, projectId);
         }
     },
 
+    // Quét đệ quy để tìm tất cả file .scss chính (không có _) và biên dịch chúng
+    async recompileMainFiles(dir, projectId) {
+        const items = fs.readdirSync(dir);
+        
+        for (const item of items) {
+            const fullPath = path.join(dir, item);
+            const stat = fs.statSync(fullPath);
+
+            if (stat.isDirectory()) {
+                if (item !== 'node_modules' && !item.startsWith('.')) {
+                    await this.recompileMainFiles(fullPath, projectId);
+                }
+            } else {
+                // Chỉ biên dịch những file .scss KHÔNG bắt đầu bằng dấu _
+                if (item.endsWith('.scss') && !item.startsWith('_')) {
+                    // Gọi compileAction trực tiếp để tránh vòng lặp kiểm tra _
+                    await this.compileAction(fullPath, projectId);
+                }
+            }
+        }
+    },
+
+    // --- Các hàm phụ trợ giữ nguyên ---
     markErrorAsFixed(project, file) {
         let hasChanges = false;
         project.logs.forEach(log => {
@@ -218,7 +235,7 @@ const Compiler = {
         UI.log(projectId, msg, 'error', file, line);
         if (App.config.web) this.broadcast({ type: 'error', message: msg });
         if (App.config.native) new Notification("Sass Compile Error", { body: msg });
-    },
+    }
 };
 
 const Watcher = {

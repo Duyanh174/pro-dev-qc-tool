@@ -215,3 +215,5 @@
 /* Tooltip Fixed */
 .mf-action-tooltip { position: absolute; background: #1c1c1e; color: #fff; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 700; z-index: 2000; transform: translate(-50%, -100%); pointer-events: none; box-shadow: 0 10px 20px rgba(0,0,0,0.2); transition: opacity 0.2s; white-space: nowrap; min-width: max-content; }
 .mf-action-tooltip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #1c1c1e; }
+
+

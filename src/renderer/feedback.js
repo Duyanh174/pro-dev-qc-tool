@@ -18,8 +18,8 @@ window.FeedbackFlow = {
 
                     <div class="fb-card">
                         <div class="fb-group">
-                            <label>cho em xin tên anh/chị nha</label>
-                            <input type="text" id="fb-name" placeholder="cho em xin tên anh/chị nha">
+                            <label>Cho em xin tên anh/chị nha</label>
+                            <input type="text" id="fb-name" placeholder="Cho em xin tên anh/chị nha">
                         </div>
 
                         <div class="fb-group">
@@ -29,7 +29,7 @@ window.FeedbackFlow = {
 
                         <div class="fb-group">
                             <label>Chức năng mong muốn (nếu có)</label>
-                            <textarea id="fb-feature" placeholder="anh/chị có muốn thêm tính năng nào không ạ?"></textarea>
+                            <textarea id="fb-feature" placeholder="Anh/chị có muốn thêm tính năng nào không ạ?"></textarea>
                         </div>
 
                         <div class="fb-group">
