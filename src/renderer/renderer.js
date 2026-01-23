@@ -384,16 +384,24 @@ const UI = {
     },
 
     initialScan: (dir, projectId) => {
+        let count = 0; // Biến đếm file
         try {
             const files = fs.readdirSync(dir);
             files.forEach(f => {
                 const fp = path.join(dir, f);
                 const stat = fs.statSync(fp);
                 if (stat.isDirectory()) {
-                    if (f !== 'node_modules' && !f.startsWith('.')) UI.initialScan(fp, projectId);
-                } else if (f.endsWith('.scss')) Compiler.run(fp, projectId);
+                    if (f !== 'node_modules' && !f.startsWith('.')) {
+                        // Cộng dồn kết quả từ thư mục con
+                        count += UI.initialScan(fp, projectId);
+                    }
+                } else if (f.endsWith('.scss')) {
+                    Compiler.run(fp, projectId);
+                    count++; // Tìm thấy 1 file
+                }
             });
         } catch(e) {}
+        return count; // Trả về tổng số file tìm thấy
     },
 
     showProjectModal: () => {
@@ -443,8 +451,21 @@ document.getElementById('btnIn').addEventListener('click', async () => {
         document.getElementById('txtIn').innerText = project.inputDir;
         document.getElementById('active-project-path').innerText = project.inputDir;
         App.save(); UI.renderProjectList();
+        
         UI.log(project.id, "Bắt đầu quét thư mục...", 'warn');
-        UI.initialScan(project.inputDir, project.id); Watcher.start(project.id);
+        
+        // Thực hiện quét và lấy số lượng file
+        const foundFiles = UI.initialScan(project.inputDir, project.id);
+        
+        if (foundFiles === 0) {
+            // Log ra lỗi nếu không tìm thấy file .scss
+            UI.log(project.id, "Lỗi: Thư mục này không chứa bất kỳ file .scss nào!", 'error');
+            if (App.config.native) new Notification("Dev-QC Pro", { body: "Không tìm thấy file .scss trong thư mục đã chọn." });
+        } else {
+            UI.log(project.id, `Đã tìm thấy và xử lý ${foundFiles} file .scss.`, 'success');
+        }
+
+        Watcher.start(project.id);
     }
 });
 
