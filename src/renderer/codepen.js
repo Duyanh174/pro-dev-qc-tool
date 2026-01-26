@@ -6,6 +6,25 @@ const CLOUDINARY_PRESET = "codepen_preset";
 
 const CodePenStorage = {
 
+  // --- PHẦN MỚI: KHỞI TẠO INDEXEDDB ---
+  DB_NAME: "CodePenCloneDB",
+  DB_VERSION: 1,
+  STORE_NAME: "local_snippets",
+
+  async getDB() {
+      return new Promise((resolve, reject) => {
+          const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+          request.onupgradeneeded = (e) => {
+              const db = e.target.result;
+              if (!db.objectStoreNames.contains(this.STORE_NAME)) {
+                  db.createObjectStore(this.STORE_NAME, { keyPath: "id" });
+              }
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject("Lỗi mở IndexedDB");
+      });
+  },
+
     // --- THÊM HÀM NÀY VÀO ĐẦU ---
     escapeHTML(str) {
       if (!str) return "";
@@ -20,7 +39,6 @@ const CodePenStorage = {
       });
   },
 
-    currentSnippets: [],
     currentSnippets: [], 
     localSnippets: [],  
     selectedImageFile: null,
@@ -36,21 +54,33 @@ const CodePenStorage = {
     LOCAL_KEY: "codepen_local_library",
 
     // 1. QUẢN LÝ LOCAL
-    saveToLocalStorage(item) {
-        let localData = JSON.parse(localStorage.getItem(this.LOCAL_KEY) || "[]");
-        if (item.id && localData.find(i => i.id === item.id)) {
-            localData = localData.map(i => i.id === item.id ? item : i);
-        } else {
-            item.id = "local_" + Date.now();
-            localData.unshift(item);
-        }
-        localStorage.setItem(this.LOCAL_KEY, JSON.stringify(localData));
-        this.loadLocalLibrary();
-    },
+    async saveToLocalDB(item) {
+      const db = await this.getDB();
+      return new Promise((resolve) => {
+          const transaction = db.transaction([this.STORE_NAME], "readwrite");
+          const store = transaction.objectStore(this.STORE_NAME);
+          
+          if (!item.id || !String(item.id).startsWith("local_")) {
+              item.id = "local_" + Date.now();
+          }
+          
+          store.put(item);
+          transaction.oncomplete = () => resolve(true);
+      });
+  },
 
-    loadLocalLibrary() {
-        this.localSnippets = JSON.parse(localStorage.getItem(this.LOCAL_KEY) || "[]");
-    },
+  async loadLocalLibrary() {
+      const db = await this.getDB();
+      return new Promise((resolve) => {
+          const transaction = db.transaction([this.STORE_NAME], "readonly");
+          const store = transaction.objectStore(this.STORE_NAME);
+          const request = store.getAll();
+          request.onsuccess = () => {
+              this.localSnippets = request.result;
+              resolve(request.result);
+          };
+      });
+  },
 
     // 2. HEARTBEAT
     async keepAlive() {
@@ -223,16 +253,18 @@ const CodePenStorage = {
             const compressedData = LZString.compressToEncodedURIComponent(JSON.stringify(rawData));
 
             if (this.storageMode === 'local') {
-                const item = {
-                    id: forceUpdate ? this.currentEditId : "local_" + Date.now(),
-                    name: name, author_name: author, data: compressedData,
-                    image_url: document.getElementById('image-preview-element').src,
-                    created_at: new Date().toISOString()
-                };
-                this.saveToLocalStorage(item);
-                if (!forceUpdate) this.currentEditId = item.id;
-                alert("✅ Đã lưu vào Private Library!");
-            } else {
+              const item = {
+                  id: forceUpdate ? this.currentEditId : null,
+                  name: name,
+                  author_name: author,
+                  data: compressedData,
+                  image_url: document.getElementById('image-preview-element').src,
+                  created_at: new Date().toISOString()
+              };
+              await this.saveToLocalDB(item); // Đợi lưu vào DB xong mới chạy tiếp
+              if (!forceUpdate) this.currentEditId = item.id;
+              alert("✅ Đã lưu vào bộ nhớ IndexedDB (Private)!");
+          } else {
                 let password = document.getElementById('password-input').value.trim();
                 let imageUrl = document.getElementById('image-preview-element').src;
                 if (CodePenStorage.selectedImageFile) imageUrl = await this.uploadToCloudinary();
@@ -264,15 +296,15 @@ const CodePenStorage = {
 
     // --- 8. THƯ VIỆN (FIX LỖI GÕ CHỮ TRONG Ô TÌM KIẾM) ---
     async loadLibrary() {
-        try {
-            this.loadLocalLibrary();
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/snippets?select=*&order=created_at.desc`, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-            });
-            this.currentSnippets = await res.json();
-            this.renderLibraryUI();
-        } catch (e) { this.renderLibraryUI(); }
-    },
+      try {
+          await this.loadLocalLibrary(); // Thêm await vào đây
+          const res = await fetch(`${SUPABASE_URL}/rest/v1/snippets?select=*&order=created_at.desc`, {
+              headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+          });
+          this.currentSnippets = await res.json();
+          this.renderLibraryUI();
+      } catch (e) { this.renderLibraryUI(); }
+  },
 
     // Hàm phụ để chỉ cập nhật danh sách, không vẽ lại ô input
     refreshLibraryList() {
@@ -392,9 +424,11 @@ const CodePenStorage = {
         this.requestAccess(item, async () => {
             if (!confirm("Xóa vĩnh viễn snippet này?")) return;
             if (isLocal) {
-                let localData = JSON.parse(localStorage.getItem(this.LOCAL_KEY) || "[]");
-                localStorage.setItem(this.LOCAL_KEY, JSON.stringify(localData.filter(i => i.id !== id)));
-            } else {
+              const db = await this.getDB();
+              const transaction = db.transaction([this.STORE_NAME], "readwrite");
+              transaction.objectStore(this.STORE_NAME).delete(id);
+              transaction.oncomplete = () => this.loadLibrary(); // Load lại sau khi xóa xong
+          } else {
                 await fetch(`${SUPABASE_URL}/rest/v1/snippets?id=eq.${id}`, { 
                     method: 'DELETE', 
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } 
