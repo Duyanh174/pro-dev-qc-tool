@@ -790,8 +790,17 @@ const CodePen = {
     const logContainer = document.getElementById("console-logs");
     if (!logContainer) return;
     const logItem = document.createElement("div");
-    logItem.className = `log-item log-${method === "log" ? "info" : method}`;
-    logItem.innerText = args
+    
+    // NÂNG CẤP: Thêm class dựa trên loại log
+    logItem.className = `log-item log-${method}`; 
+    
+    // Thêm icon nhỏ phía trước để phân biệt
+    let prefix = "";
+    if (method === 'error') prefix = "❌ ";
+    if (method === 'warn') prefix = "⚠️ ";
+    if (method === 'info') prefix = "ℹ️ ";
+
+    logItem.innerText = prefix + args
       .map((arg) => {
         try {
           return typeof arg === "object"
@@ -802,9 +811,10 @@ const CodePen = {
         }
       })
       .join(" ");
+      
     logContainer.appendChild(logItem);
     logContainer.scrollTop = logContainer.scrollHeight;
-  },
+},
 
   // --- LINE NUMBER WRAP LOGIC ---
   initAce() {
@@ -1133,15 +1143,80 @@ const CodePen = {
     const js = this.editors.js.getValue();
     const previewEl = document.getElementById("preview-window");
     if (!previewEl) return;
-    const extCSS = this.externalResources.css
-      .map((url) => `<link rel="stylesheet" href="${url}">`)
-      .join("\n");
-    const extJS = this.externalResources.js
-      .map((url) => `<script src="${url}"><\/script>`)
-      .join("\n");
-    const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="https://unpkg.com/splitting/dist/splitting.css" />${extCSS}<style>body{margin:0;padding:15px;font-family:'Poppins',sans-serif;color:white;} ${css}</style><script>(function(){['log','warn','error','info'].forEach(m=>{const o=console[m];console[m]=function(...a){window.parent.postMessage({type:'iframe-log',method:m,arguments:a},'*');o.apply(console,a);};});window.addEventListener('message',e=>{if(e.data.type==='exec-console'){try{const r=eval(e.data.command);if(r!==undefined)console.log(r);}catch(err){console.error(err);}}});})();<\/script></head><body>${html}<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"><\/script><script src="https://unpkg.com/splitting/dist/splitting.min.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>${extJS}<script type="module">if(typeof Splitting!=='undefined')Splitting();if(typeof gsap!=='undefined')gsap.registerPlugin(ScrollTrigger,Draggable);${js}<\/script></body></html>`;
+
+    const extCSS = this.externalResources.css.map((url) => `<link rel="stylesheet" href="${url}">`).join("\n");
+    const extJS = this.externalResources.js.map((url) => `<script src="${url}"><\/script>`).join("\n");
+
+    const content = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/splitting/dist/splitting.css" />
+    ${extCSS}
+    <style>body{margin:0;padding:15px;font-family:'Poppins',sans-serif;color:white;} ${css}</style>
+    <script>
+    (function(){
+        // Ghi đè console
+        ['log','warn','error','info'].forEach(m=>{
+            const o = console[m];
+            console[m] = function(...a){
+                window.parent.postMessage({type:'iframe-log',method:m,arguments:a},'*');
+                o.apply(console,a);
+            };
+        });
+
+        // Bắt mọi lỗi Syntax và Runtime của Module gửi ra ngoài
+        window.onerror = function(message, source, lineno, colno, error) {
+            window.parent.postMessage({
+                type: 'iframe-log',
+                method: 'error',
+                arguments: [message + " (Dòng: " + lineno + ")"]
+            }, '*');
+            return false;
+        };
+
+        window.onunhandledrejection = function(event) {
+            window.parent.postMessage({
+                type: 'iframe-log',
+                method: 'error',
+                arguments: ["Uncaught (in promise): " + event.reason]
+            }, '*');
+        };
+
+        window.addEventListener('message', e => {
+            if(e.data.type==='exec-console'){
+                try {
+                    const r = eval(e.data.command);
+                    if(r!==undefined) console.log(r);
+                } catch(err) { console.error(err.message); }
+            }
+        });
+    })();
+    <\/script>
+</head>
+<body>
+    ${html}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"><\/script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"><\/script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"><\/script>
+    <script src="https://unpkg.com/splitting/dist/splitting.min.js"><\/script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+    ${extJS}
+    
+    <script type="module">
+        // Tự động khởi tạo thư viện
+        if(typeof Splitting!=='undefined') Splitting();
+        if(typeof gsap!=='undefined') gsap.registerPlugin(ScrollTrigger,Draggable);
+
+        // THỰC THI CODE NGƯỜI DÙNG (Không bọc try-catch để cho phép dùng 'import')
+        ${js}
+    <\/script>
+</body>
+</html>`;
     previewEl.srcdoc = content;
-  },
+},
 };
 
 window.runCode = () => CodePen.run();
