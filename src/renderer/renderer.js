@@ -357,10 +357,12 @@ const UI = {
             const item = document.createElement('div');
             item.className = `project-item ${App.activeProjectId === p.id ? 'active' : ''}`;
             item.innerHTML = `
-                <div class="avatar">${p.name.substring(0, 2).toUpperCase()}</div>
-                <div class="name-box">
-                    <div class="name">${p.name}</div>
-                    <div class="dir-hint">${p.inputDir ? path.basename(p.inputDir) : 'No folder'}</div>
+                <div class="project-item-wrap">
+                    <div class="avatar">${p.name.substring(0, 2).toUpperCase()}</div>
+                    <div class="name-box">
+                        <div class="name">${p.name}</div>
+                        <div class="dir-hint">${p.inputDir ? path.basename(p.inputDir) : 'No folder'}</div>
+                    </div>
                 </div>
                 <div class="delete-btn" onclick="App.deleteProject('${p.id}', event)">×</div>
             `;
@@ -419,12 +421,33 @@ const UI = {
 };
 
 // --- EVENTS ---
-window.setMode = (m) => {
+window.setMode = async (m) => {
     const project = App.getActiveProject();
-    if (project) { project.mode = m; App.save(); }
+    if (!project) return;
+
+    const oldMode = project.mode;
+    project.mode = m;
+    App.save();
+
+    // Cập nhật giao diện
     document.getElementById('modeSame').classList.toggle('active', m === 'same');
     document.getElementById('modeCustom').classList.toggle('active', m === 'custom');
     document.getElementById('outputCard').style.visibility = (m === 'custom') ? 'visible' : 'hidden';
+
+    // Xử lý biên dịch hàng loạt để đồng bộ hóa
+    if (oldMode !== m && project.inputDir) {
+        if (m === 'custom' && !project.outputDir) {
+            UI.log(project.id, "Lưu ý: Bạn cần chọn TARGET CSS để hoàn tất cấu trúc Custom.", "warn");
+            return;
+        }
+
+        UI.log(project.id, `Đang đồng bộ hóa toàn bộ sang chế độ: ${m.toUpperCase()}...`, 'warn');
+        
+        // BIÊN DỊCH HÀNG LOẠT NGAY TẠI ĐÂY
+        await Compiler.recompileMainFiles(project.inputDir, project.id);
+        
+        UI.log(project.id, `Đã đồng bộ hóa xong tất cả các file.`, 'success');
+    }
 };
 
 window.showTab = (id) => {
@@ -470,12 +493,21 @@ document.getElementById('btnIn').addEventListener('click', async () => {
 });
 
 document.getElementById('btnOut').addEventListener('click', async () => {
-    const project = App.getActiveProject(); if (!project) return;
+    const project = App.getActiveProject(); 
+    if (!project) return;
+
     const res = await ipcRenderer.invoke('select-folder');
     if (!res.canceled) {
         project.outputDir = res.filePaths[0];
         document.getElementById('txtOut').innerText = project.outputDir;
-        App.save(); UI.log(project.id, `Đã đổi folder đích.`, 'success');
+        App.save(); 
+        
+        UI.log(project.id, `Mục tiêu mới đã được xác định. Đang khởi tạo file CSS...`, 'warn');
+        
+        // CHẠY BIÊN DỊCH HÀNG LOẠT
+        await Compiler.recompileMainFiles(project.inputDir, project.id);
+        
+        UI.log(project.id, `Đã xuất toàn bộ CSS sang thư mục mới thành công.`, 'success');
     }
 });
 
@@ -485,8 +517,10 @@ document.getElementById('confirm-project-btn').addEventListener('click', () => {
 });
 
 document.getElementById('btnStop').addEventListener('click', () => Watcher.stop(App.activeProjectId));
-document.getElementById('btnResume').addEventListener('click', () => Watcher.start(App.activeProjectId));
-window.clearLogs = () => {
+document.getElementById('btnResume').addEventListener('click', () => {
+    Watcher.start(App.activeProjectId);
+    UI.log(App.activeProjectId, "Engine đã hoạt động trở lại.", "success");
+});window.clearLogs = () => {
     const project = App.getActiveProject();
     if (project) { project.logs = []; App.save(); UI.renderLogs([]); }
 };

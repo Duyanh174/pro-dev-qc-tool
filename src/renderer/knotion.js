@@ -15,14 +15,12 @@
             const container = document.getElementById('knotion-container');
             if (!container) return;
 
-            // 1. Quản lý đường dẫn lưu trữ
             const savedPath = localStorage.getItem('knotion_custom_path');
             this.saveDir = savedPath || path.join(os.homedir(), 'Documents', 'KnotionData');
             this.saveFile = path.join(this.saveDir, 'data.json');
 
             if (!fs.existsSync(this.saveDir)) fs.mkdirSync(this.saveDir, { recursive: true });
 
-            // 2. Render UI
             const htmlPath = path.join(__dirname, '../ui/features/knotion.html');
             if (fs.existsSync(htmlPath)) {
                 container.innerHTML = fs.readFileSync(htmlPath, 'utf8');
@@ -31,7 +29,6 @@
                 this.loadData();
                 this.renderNoteList();
                 
-                // Khởi tạo trạng thái ban đầu
                 if (this.data.notes.length > 0) {
                     this.loadNote(this.data.notes[0].id);
                 } else {
@@ -41,9 +38,9 @@
             this.fixAceOptions();
         },
 
+        // --- CÁC HÀM TIỆN ÍCH GIỮ NGUYÊN ---
         fixAceOptions() {
             if (window.ace) ace.config.set('basePath', 'https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/');
-            // Fix CodePen crash
             if (window.CodePenStorage && !CodePenStorage.keepAlive) {
                 CodePenStorage.keepAlive = () => true;
             }
@@ -84,28 +81,80 @@
             }
         },
 
+        // ========================================================
+        // NÂNG CẤP EDITOR TOÀN DIỆN
+        // ========================================================
         initEditor(initialData) {
-            if (this.editor && typeof this.editor.destroy === 'function') this.editor.destroy();
+            if (this.editor && typeof this.editor.destroy === 'function') {
+                this.editor.destroy();
+            }
 
-            // Đăng ký Plugin an toàn
+            // --- SAFE TOOL LOADER ---
+            // Kiểm tra xem các biến global từ CDN đã sẵn sàng chưa
             const tools = {};
-            if (window.Header) tools.header = Header;
-            if (window.List) tools.list = List;
-            if (window.Checklist) tools.checklist = Checklist;
-            if (window.Quote) tools.quote = Quote;
+
+            // Căn lề (Tune)
+            if (window.AlignmentBlockTune) {
+                tools.anyTuneName = {
+                    class: AlignmentBlockTune,
+                    config: { default: "left" }
+                };
+            }
+
+            // Paragraph (Khối văn bản chính)
+            if (window.Paragraph) {
+                tools.paragraph = {
+                    class: Paragraph,
+                    inlineToolbar: true,
+                    tunes: window.AlignmentBlockTune ? ['anyTuneName'] : []
+                };
+            }
+
+            // Header, List, Checklist...
+            if (window.Header) tools.header = { class: Header, inlineToolbar: true, tunes: window.AlignmentBlockTune ? ['anyTuneName'] : [] };
+            if (window.List) tools.list = { class: List, inlineToolbar: true, tunes: window.AlignmentBlockTune ? ['anyTuneName'] : [] };
+            if (window.Checklist) tools.checklist = { class: Checklist, inlineToolbar: true };
+            if (window.Quote) tools.quote = { class: Quote, inlineToolbar: true };
+            if (window.Table) tools.table = { class: Table, inlineToolbar: true };
             if (window.Code) tools.code = Code;
-            if (window.Table) tools.table = Table;
+            if (window.Delimiter) tools.delimiter = Delimiter;
             if (window.Warning) tools.warning = Warning;
             if (window.Marker) tools.marker = Marker;
             if (window.InlineCode) tools.inlineCode = InlineCode;
 
+            // Xử lý ImageTool (Lưu ý: global name của @editorjs/image là ImageTool)
+            if (window.ImageTool) {
+                tools.image = {
+                    class: ImageTool,
+                    config: {
+                        uploader: {
+                            uploadByFile(file) {
+                                return new Promise((resolve) => {
+                                    const reader = new FileReader();
+                                    reader.onload = (e) => resolve({ success: 1, file: { url: e.target.result } });
+                                    reader.readAsDataURL(file);
+                                });
+                            }
+                        }
+                    }
+                };
+            }
+
+            // KHỞI TẠO EDITORJS
             this.editor = new EditorJS({
                 holder: 'editorjs',
                 data: initialData || { blocks: [] },
                 placeholder: 'Type "/" for commands...',
                 tools: tools,
+                defaultBlock: 'paragraph',
+                onReady: () => {
+                    // Kích hoạt Undo nếu có thư viện
+                    if (window.Undo) {
+                        new Undo({ editor: this.editor });
+                    }
+                },
                 onChange: async () => {
-                    if (this.activeNoteId) {
+                    if (this.activeNoteId && this.activeNoteId !== 'mood_flow_system') {
                         const content = await this.editor.save();
                         this.updateActiveNote(content);
                     }
@@ -113,6 +162,7 @@
             });
         },
 
+        // --- CÁC LOGIC QUẢN LÝ NOTE GIỮ NGUYÊN ---
         createNote() {
             const newNote = {
                 id: 'k_' + Date.now(),
@@ -127,17 +177,10 @@
         },
 
         openMoodFlow(tabName = 'emotions') {
-            // 1. Cập nhật trạng thái ID
             this.activeNoteId = 'mood_flow_system';
-        
-            // 2. Xử lý UI Highlight ở Sidebar
-            // Xóa class 'active' khỏi tất cả các Note
             document.querySelectorAll('.knot-item').forEach(el => el.classList.remove('active'));
-            // Thêm class 'active' vào mục Mood Flow
             const mfItem = document.getElementById('mf-sidebar-item');
             if (mfItem) mfItem.classList.add('active');
-        
-            // 3. Chuyển đổi vùng hiển thị bên phải
             document.getElementById('editor-workspace').style.display = 'none';
             document.getElementById('empty-state').style.display = 'none';
             
@@ -149,37 +192,20 @@
                 document.querySelector('.knotion-editor-area').appendChild(mfWorkspace);
             }
             mfWorkspace.style.display = 'block';
-        
-            // 4. Gọi MoodFlow render nội dung
-            if (window.MoodFlow) {
-                window.MoodFlow.renderDashboard(mfWorkspace, tabName);
-            }
-            
-            // Ẩn chấm đỏ thông báo sau khi người dùng đã vào xem
+            if (window.MoodFlow) window.MoodFlow.renderDashboard(mfWorkspace, tabName);
             const dot = document.getElementById('mood-notif-dot');
             if (dot) dot.style.display = 'none';
         },
         
-        
         loadNote(id) {
-            // 1. XỬ LÝ GIAO DIỆN (UI SWITCH)
-            // Ẩn vùng làm việc của Mood Flow nếu đang mở
             const mfWorkspace = document.getElementById('moodflow-workspace');
-            if (mfWorkspace) {
-                mfWorkspace.style.display = 'none';
-            }
-        
-            // Xóa Highlight của Mood Flow ở Sidebar để người dùng biết đã thoát chức năng này
+            if (mfWorkspace) mfWorkspace.style.display = 'none';
             const mfSidebarItem = document.getElementById('mf-sidebar-item');
-            if (mfSidebarItem) {
-                mfSidebarItem.classList.remove('active');
-            }
+            if (mfSidebarItem) mfSidebarItem.classList.remove('active');
         
-            // Hiện vùng Editor và ẩn trạng thái trống
             document.getElementById('editor-workspace').style.display = 'block';
             document.getElementById('empty-state').style.display = 'none';
         
-            // 2. GIỮ NGUYÊN LOGIC CŨ CỦA BẠN
             this.activeNoteId = id;
             const note = this.data.notes.find(n => n.id === id);
             if (!note) return;
@@ -188,14 +214,12 @@
             const titleInp = document.getElementById('note-title');
             titleInp.value = note.title;
             
-            // Logic lưu tiêu đề khi nhập liệu
             titleInp.oninput = () => {
                 note.title = titleInp.value;
                 this.renderNoteList();
                 this.saveData();
             };
         
-            // Khởi tạo Editor và cập nhật danh sách Sidebar (đã bao gồm highlight note đang chọn)
             this.initEditor(note.content);
             this.renderNoteList();
         },

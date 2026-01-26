@@ -106,6 +106,7 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+    justify-content: space-between;
 }
 
 .project-item:hover {
@@ -137,12 +138,24 @@ body {
 }
 
 .project-item .name {
-    font-size: 13px;
+    font-size: 17px;
     font-weight: 600;
     color: var(--text-dim);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+
+.project-item-wrap{
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.dir-hint{
+    color: #8492a6;
+    font-size: 14px;
 }
 
 .project-item.active .name {
@@ -214,6 +227,7 @@ body {
     font-size: 11px;
     color: var(--text-dim);
     margin-top: 6px;
+    margin-bottom: 6px;
     font-family: 'JetBrains Mono', monospace;
     opacity: 0.7;
 }
