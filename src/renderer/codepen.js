@@ -5,6 +5,22 @@ const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dpn8hugjc/image/upload";
 const CLOUDINARY_PRESET = "codepen_preset";
 
 const CodePenStorage = {
+
+    // --- THÊM HÀM NÀY VÀO ĐẦU ---
+    escapeHTML(str) {
+      if (!str) return "";
+      return str.replace(/[&<>"']/g, function(m) {
+          return {
+              '&': '&amp;',
+              '<': '&lt;',
+              '>': '&gt;',
+              '"': '&quot;',
+              "'": '&#039;'
+          }[m];
+      });
+  },
+
+    currentSnippets: [],
     currentSnippets: [], 
     localSnippets: [],  
     selectedImageFile: null,
@@ -284,8 +300,8 @@ const CodePenStorage = {
                 <div class="library-item" onclick="CodePenStorage.applySnippet('${item.id}')" style="border-left: 3px solid ${isLocal ? '#007acc' : '#28a745'}">
                     <img src="${thumbUrl}" class="snippet-thumb" style="width:80px; height:50px; object-fit:cover; border-radius:4px;">
                     <div class="library-item-info" style="flex:1; margin-left:10px;">
-                        <span style="font-weight:bold">${item.name} ${item.password ? '🔒' : ''}</span><br>
-                        <small class="author-tag" style="background:${isLocal ? '#007acc22' : '#28a74522'}">👤 ${item.author_name || 'Duy Anh'}</small>
+                      <span style="font-weight:bold">${CodePenStorage.escapeHTML(item.name)} ${item.password ? '🔒' : ''}</span><br>
+                      <small class="author-tag" style="background:${isLocal ? '#007acc22' : '#28a74522'}">👤 ${CodePenStorage.escapeHTML(item.author_name || 'Duy Anh')}</small>
                     </div>
                     <div class="library-item-actions">
                         <span class="edit-btn" onclick="CodePenStorage.editSnippet('${item.id}', event)">✏️</span>
@@ -454,7 +470,7 @@ const CodePen = {
   startTranslateY: 0,
   startConsoleHeight: 0,
   startLeftWidth: 0,
-  autoRunEnabled: false,
+  autoRunEnabled: true,
   debounceTimer: null,
   STORAGE_KEY: "codepen_user_data",
   viewMode: "standard",
@@ -463,9 +479,13 @@ const CodePen = {
   editors: { html: null, css: null, js: null },
   externalResources: { css: [], js: [] },
 
-  init() {
-    this.render();
-    CodePenStorage.keepAlive();
+  init() { 
+    this.render(); 
+    CodePenStorage.keepAlive(); 
+    // Thêm dòng này để tự động chạy code ngay khi khởi tạo
+    if (this.autoRunEnabled) {
+        setTimeout(() => this.run(), 500); 
+    }
   },
 
   render() {
@@ -476,7 +496,7 @@ const CodePen = {
             <div class="preview-actions">
                 <div class="brand-name">
             <input type="text" id="active-snippet-name" 
-                   value="${CodePenStorage.currentName}" 
+                   value="${CodePenStorage.escapeHTML(CodePenStorage.currentName)}"
                    placeholder="Untitled"
                    title="Click để đổi tên snippet">
         </div>
@@ -1215,7 +1235,7 @@ const CodePen = {
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/splitting/dist/splitting.css" />
     ${extCSS}
-    <style>body{margin:0;padding:15px;font-family:'Poppins',sans-serif;color:white;} ${css}</style>
+    <style>body{margin:0;padding:15px;font-family:'Poppins',sans-serif;color:black;} ${css}</style>
     <script>
     (function(){
         // Ghi đè console
