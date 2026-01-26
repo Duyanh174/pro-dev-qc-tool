@@ -685,6 +685,16 @@ const CodePen = {
     this.initResizers();
     this.syncThemeColors();
 
+    setTimeout(() => {
+      const theme = document.getElementById("theme-selector").value;
+      Object.values(this.editors).forEach(ed => {
+        if (ed) {
+            ed.setTheme(theme);
+            ed.renderer.updateFull(); // Ép render lại toàn bộ giao diện editor
+        }
+      });
+    }, 50);
+
     if (this.viewMode === "standard") {
       const overlay = document.getElementById("preview-overlay-container");
       const defaultY = window.innerHeight * 0.45;
@@ -815,12 +825,15 @@ const CodePen = {
     logContainer.appendChild(logItem);
     logContainer.scrollTop = logContainer.scrollHeight;
 },
+  
 
   // --- LINE NUMBER WRAP LOGIC ---
   initAce() {
     const savedData = this.loadFromStorage();
+    const selectedTheme = document.getElementById("theme-selector")?.value || "ace/theme/monokai";
+
     const config = {
-      theme: "ace/theme/monokai",
+      theme: selectedTheme,
       fontSize: "13px",
       useSoftTabs: true,
       showPrintMargin: false,
@@ -1117,30 +1130,77 @@ const CodePen = {
       '<div style="color:#555; font-size: 11px;">No external resources.</div>';
   },
   syncThemeColors() {
-    const style = window.getComputedStyle(
-      document.querySelector(".ace_editor")
+    const themeSelect = document.getElementById("theme-selector");
+    if (!themeSelect) return;
+    
+    // Đợi 1 chút để Ace load xong CSS của theme rồi lấy màu background của nó
+    setTimeout(() => {
+        const editorEl = document.querySelector(".ace_editor");
+        if (!editorEl) return;
+        
+        const style = window.getComputedStyle(editorEl);
+        const bgColor = style.backgroundColor;
+        const textColor = style.color;
+
+        // Áp dụng màu này cho các thanh tiêu đề và gutter để trông đồng bộ
+        document.querySelectorAll(".editor-label, .custom-line-numbers, .split-tabs-header").forEach(el => {
+            el.style.backgroundColor = bgColor;
+            el.style.color = textColor;
+            el.style.borderBottom = "1px solid rgba(255,255,255,0.1)";
+        });
+    }, 200);
+  },
+
+  // --- CHỖ CẦN SỬA: Hàm bảo vệ thông minh hơn ---
+  protectJS(code, timeoutLimit) {
+    const timeoutMs = (timeoutLimit || 5) * 1000; // Quy đổi giây sang miligiây
+    
+    const helper = `
+      window._loopContext = {
+        startTime: Date.now(),
+        iterationCount: 0,
+        timeoutLimit: ${timeoutMs}
+      };
+      window._checkLoop = function() {
+        window._loopContext.iterationCount++;
+        // Kiểm tra sau mỗi 10.000 lần lặp để tránh làm chậm các tác vụ nặng
+        if (window._loopContext.iterationCount % 10000 === 0) {
+          const elapsed = Date.now() - window._loopContext.startTime;
+          if (elapsed > window._loopContext.timeoutLimit) {
+            // Hiển thị modal cảnh báo của hệ thống (window.confirm sẽ dừng luồng JS)
+            const msg = "CẢNH BÁO: Phát hiện vòng lặp tiềm ẩn vô tận hoặc tác vụ quá nặng (>" + (window._loopContext.timeoutLimit/1000) + " giây).\\n\\nBấm OK để TIẾP TỤC chạy thêm.\\nBấm CANCEL để DỪNG thực thi ngay lập tức.";
+            if (window.confirm(msg)) {
+                // Nếu chọn OK: Reset lại thời gian bắt đầu để cho chạy tiếp một khoảng nữa
+                window._loopContext.startTime = Date.now();
+            } else {
+                // Nếu chọn Cancel: Quăng lỗi để dừng toàn bộ code JS
+                throw new Error("DỪNG THỰC THI: Người dùng đã chủ động ngắt vòng lặp.");
+            }
+          }
+        }
+      };
+    `;
+
+    // Chèn hàm kiểm tra vào tất cả các loại vòng lặp
+    const protectedCode = code.replace(
+      /(for|while|do)\s*\((?:[^)(]+|\((?:[^)(]+|\([^)(]*\))*\))*\)\s*\{/g,
+      (match) => `${match} _checkLoop();`
     );
-    document
-      .querySelectorAll(".editor-box, .console-panel, .tab-btn-codepen")
-      .forEach((el) => {
-        // el.style.backgroundColor = style.backgroundColor;
-        // el.style.color = style.color;
-      });
-    document
-      .querySelectorAll(".custom-line-numbers, .console-logs")
-      .forEach((el) => {
-        // el.style.backgroundColor = style.backgroundColor;
-        // el.style.color = style.color;
-        // el.style.opacity = "0.5";
-      });
-    document
-      .querySelectorAll(".editor-label, .console-header")
-      .forEach((el) => (el.style.filter = "brightness(1.1)"));
+
+    return helper + protectedCode;
   },
   run() {
     const html = this.editors.html.getValue();
     const css = this.editors.css.getValue();
-    const js = this.editors.js.getValue();
+    // const js = this.editors.js.getValue();
+    const rawJS = this.editors.js.getValue();
+    
+    // Đọc giá trị Timeout từ ô Input người dùng nhập
+    const timeoutInput = document.getElementById('loop-timeout-limit');
+    const userTimeout = timeoutInput ? parseInt(timeoutInput.value) : 5;
+
+    // Truyền cả code và giới hạn thời gian vào protectJS
+    const js = this.protectJS(rawJS, userTimeout);
     const previewEl = document.getElementById("preview-window");
     if (!previewEl) return;
 
