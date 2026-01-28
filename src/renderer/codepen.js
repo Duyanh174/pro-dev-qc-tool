@@ -105,7 +105,7 @@ verifyUnlock() {
       const saveBtn = document.querySelector('[onclick="CodePenStorage.openSaveModal()"]');
       if (saveBtn) saveBtn.style.display = isReadOnly ? 'none' : 'inline-block';
   },
-
+    currentSnippets: [], 
     localSnippets: [],  
     selectedImageFile: null,
     currentEditId: null,
@@ -1259,7 +1259,7 @@ const CodePen = {
     this.saveToStorage();
     if (!this.autoRunEnabled) return;
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
-    this.debounceTimer = setTimeout(() => this.run(), 800);
+    this.debounceTimer = setTimeout(() => this.run(), 200);
   },
   resizeEditors() {
     Object.values(this.editors).forEach((ed) => ed && ed.resize());
@@ -1376,117 +1376,107 @@ const CodePen = {
 
     return helper + protectedCode;
 },
-  run() {
-    const html = this.editors.html.getValue();
-    const css = this.editors.css.getValue();
-    // const js = this.editors.js.getValue();
-    const rawJS = this.editors.js.getValue();
-    
-    // Đọc giá trị Timeout từ ô Input người dùng nhập
-    const timeoutInput = document.getElementById('loop-timeout-limit');
-    const userTimeout = timeoutInput ? parseInt(timeoutInput.value) : 5;
+run() {
+  const html = this.editors.html.getValue();
+  const css = this.editors.css.getValue();
+  const rawJS = this.editors.js.getValue();
+  
+  const timeoutInput = document.getElementById('loop-timeout-limit');
+  const userTimeout = timeoutInput ? parseInt(timeoutInput.value) : 5;
 
-    // Truyền cả code và giới hạn thời gian vào protectJS
-    const js = this.protectJS(rawJS, userTimeout);
-    const previewEl = document.getElementById("preview-window");
-    if (!previewEl) return;
+  // protectJS trả về: helper (mã bảo vệ) + code đã được xử lý
+  const js = this.protectJS(rawJS, userTimeout);
+  
+  const previewEl = document.getElementById("preview-window");
+  if (!previewEl) return;
 
-    previewEl.srcdoc = "";
+  previewEl.srcdoc = "";
 
-    const extCSS = this.externalResources.css.map((url) => `<link rel="stylesheet" href="${url}">`).join("\n");
-    const extJS = this.externalResources.js.map((url) => `<script src="${url}"><\/script>`).join("\n");
+  const extCSS = this.externalResources.css.map((url) => `<link rel="stylesheet" href="${url}">`).join("\n");
+  const extJS = this.externalResources.js.map((url) => `<script src="${url}"><\/script>`).join("\n");
 
-    const content = `
-<!DOCTYPE html>
+  // PHẦN 1: Chứa toàn bộ HTML, CSS và Logic hệ thống (Dừng lại ngay trước khi nạp JS người dùng)
+  const headerContent = `<!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/splitting/dist/splitting.css" />
-    ${extCSS}
-    <style>body{margin:0;padding:15px;font-family:'Poppins',sans-serif;color:black;} ${css}</style>
-    <script>
-    (function(){
-        let logCount = 0;
-        let lastLogTime = Date.now();
-        const MAX_LOGS = 500; 
-        const RECOVERY_COUNT = 10; // Số lượng log gần nhất muốn giữ lại
-        let logBuffer = []; // Bộ nhớ tạm lưu 10 log gần nhất
+  <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/splitting/dist/splitting.css" />
+  ${extCSS}
+  <style>body{margin:0;padding:15px;font-family:'Poppins',sans-serif;color:black;} ${css}</style>
+  <script>
+  (function(){
+      let logCount = 0;
+      let lastLogTime = 0
+      const MAX_LOGS = 500; 
+      const RECOVERY_COUNT = 10; 
+      let logBuffer = [];
 
-        ['log','warn','error','info'].forEach(m=>{
-            const o = console[m];
-            console[m] = function(...a){
-                logCount++;
+      window._lineOffset = 0; // Sẽ được ghi đè ở bên dưới
 
-                // 1. Luôn cập nhật bộ nhớ tạm (Giữ 10 dòng mới nhất)
-                logBuffer.push({ method: m, args: a });
-                if (logBuffer.length > RECOVERY_COUNT) logBuffer.shift();
+      ['log','warn','error','info'].forEach(m=>{
+          const o = console[m];
+          console[m] = function(...a){
+              logCount++;
+              logBuffer.push({ method: m, args: a });
+              if (logBuffer.length > RECOVERY_COUNT) logBuffer.shift();
+              if (logCount > MAX_LOGS) {
+                  if (logCount === MAX_LOGS + 1) {
+                      window.parent.postMessage({type:'iframe-log',method:'error',arguments:["❌ PHÁT HIỆN SPAM..."]},'*');
+                      logBuffer.forEach(log => {
+                          window.parent.postMessage({type:'iframe-log',method: log.method,arguments: log.args},'*');
+                      });
+                  }
+                  return; 
+              }
+              const now = Date.now();
+              if (now - lastLogTime > 30) {
+                  window.parent.postMessage({type:'iframe-log',method:m,arguments:a},'*');
+                  lastLogTime = now;
+              }
+              o.apply(console,a);
+          };
+      });
 
-                // 2. Kiểm tra giới hạn
-                if (logCount > MAX_LOGS) {
-                    if (logCount === MAX_LOGS + 1) {
-                        // Gửi cảnh báo chính
-                        window.parent.postMessage({
-                            type:'iframe-log',
-                            method:'error',
-                            arguments:["❌ PHÁT HIỆN SPAM: Đã dừng log để bảo vệ trình duyệt. Dưới đây là " + RECOVERY_COUNT + " dòng cuối cùng:"]
-                        },'*');
-
-                        // Gửi 10 dòng log "tử thần" trong bộ nhớ tạm ra máy mẹ
-                        logBuffer.forEach(log => {
-                            window.parent.postMessage({
-                                type:'iframe-log',
-                                method: log.method,
-                                arguments: log.args
-                            },'*');
-                        });
-                    }
-                    return; 
-                }
-
-                // 3. Throttle: Chặn tốc độ gửi postMessage để tránh nghẽn (30ms)
-                const now = Date.now();
-                if (now - lastLogTime > 30) {
-                    window.parent.postMessage({type:'iframe-log',method:m,arguments:a},'*');
-                    lastLogTime = now;
-                }
-
-                o.apply(console,a);
-            };
-        });
-        
-        // Giữ nguyên logic window.onerror bên dưới...
-        window.onerror = function(message, source, lineno, colno, error) {
-            window.parent.postMessage({
-                type: 'iframe-log',
-                method: 'error',
-                arguments: [message + " (Dòng: " + lineno + ")"]
-            }, '*');
-            return false;
-        };
-    })();
-    <\/script>
+      window.onerror = function(message, source, lineno, colno, error) {
+          // TÍNH TOÁN DÒNG THỰC TẾ
+          const actualLine = lineno - window._lineOffset;
+          window.parent.postMessage({
+              type: 'iframe-log',
+              method: 'error',
+              arguments: [message + " (Dòng: " + (actualLine > 0 ? actualLine : 1) + ")"]
+          }, '*');
+          return false;
+      };
+  })();
+  <\/script>
 </head>
 <body>
-    ${html}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"><\/script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"><\/script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"><\/script>
-    <script src="https://unpkg.com/splitting/dist/splitting.min.js"><\/script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
-    ${extJS}
-    
-    <script type="module">
-        // Tự động khởi tạo thư viện
-        if(typeof Splitting!=='undefined') Splitting();
-        if(typeof gsap!=='undefined') gsap.registerPlugin(ScrollTrigger,Draggable);
+  ${html}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"><\/script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"><\/script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/Draggable.min.js"><\/script>
+  <script src="https://unpkg.com/splitting/dist/splitting.min.js"><\/script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+  ${extJS}
+  <script type="module">
+      if(typeof Splitting!=='undefined') Splitting();
+      if(typeof gsap!=='undefined') gsap.registerPlugin(ScrollTrigger,Draggable);
+`;
 
-        // THỰC THI CODE NGƯỜI DÙNG (Không bọc try-catch để cho phép dùng 'import')
-        ${js}
-    <\/script>
+  // PHẦN 2: Tính toán số dòng của (HeaderContent + helper của protectJS)
+  // helper nằm ở đầu biến 'js', chúng ta lấy số dòng của nó
+  const helperLines = js.split('\n').length - rawJS.split('\n').length;
+  const offsetValue = headerContent.split('\n').length + helperLines;
+
+  // Ghép và ghi đè giá trị offset thực tế vào mã nguồn Iframe
+  const finalContent = headerContent.replace('window._lineOffset = 0;', `window._lineOffset = ${offsetValue};`) + `
+      ${js}
+  <\/script>
 </body>
 </html>`;
-    previewEl.srcdoc = content;
+
+  previewEl.srcdoc = finalContent;
 },
 };
 
