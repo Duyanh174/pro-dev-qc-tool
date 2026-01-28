@@ -833,3 +833,9 @@ body {
     color: #000;
     border-color: var(--warning);
 }
+
+.name-box{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}

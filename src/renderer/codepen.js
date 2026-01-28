@@ -39,6 +39,73 @@ const CodePenStorage = {
       });
   },
 
+    handleAccessModeChange(mode) {
+      const passInput = document.getElementById('password-input');
+      if (mode === 'view') {
+          passInput.placeholder = "Bắt buộc nhập pass để bảo vệ mode View...";
+          passInput.style.borderColor = "#ff9800";
+      } else {
+          passInput.placeholder = "Để trống nếu công khai...";
+          passInput.style.borderColor = "#444";
+      }
+  },
+
+  // Hàm xử lý Mở khóa khi đang ở mode View
+  unlockSnippet() {
+    // Thay vì dùng prompt gây lỗi trên Electron, ta hiện Modal tự chế
+    const modal = document.getElementById('unlock-modal-overlay');
+    const input = document.getElementById('unlock-pass-input');
+    if (modal) {
+        modal.style.display = 'flex';
+        input.value = ""; // Xóa trắng pass cũ
+        input.focus();    // Tự động nhảy vào ô nhập
+    }
+},
+
+verifyUnlock() {
+  const input = document.getElementById('unlock-pass-input');
+  const passwordEntered = input.value;
+
+  if (!passwordEntered) {
+      alert("Vui lòng nhập mật khẩu!");
+      return;
+  }
+
+  // Tìm snippet hiện tại trong bộ nhớ (để lấy password đúng)
+  const currentItem = this.libraryTab === 'local' 
+      ? this.localSnippets.find(s => s.id === this.currentEditId)
+      : this.currentSnippets.find(s => s.id === this.currentEditId);
+
+  if (currentItem && passwordEntered === currentItem.password) {
+      alert("✅ Mở khóa thành công! Bạn có thể sửa code.");
+      this.setReadOnlyMode(false); // Mở khóa Editor
+      document.getElementById('unlock-modal-overlay').style.display = 'none'; // Đóng modal
+  } else {
+      alert("❌ Sai mật khẩu!");
+  }
+},
+
+    // Hàm phụ để bật/tắt trạng thái khóa của toàn bộ ứng dụng
+    setReadOnlyMode(isReadOnly) {
+      this.isLocked = isReadOnly; // <-- QUAN TRỌNG: Lưu lại trạng thái vào bộ nhớ
+  
+      // 1. Khóa/Mở các editor Ace
+      Object.values(CodePen.editors).forEach(ed => {
+          if (ed) {
+              ed.setReadOnly(isReadOnly);
+              ed.container.style.opacity = isReadOnly ? "0.6" : "1";
+          }
+      });
+  
+      // 2. Ẩn/Hiện Overlay ổ khóa
+      const lockOverlay = document.getElementById('lock-overlay');
+      if (lockOverlay) lockOverlay.style.display = isReadOnly ? 'flex' : 'none';
+  
+      // 3. Ẩn/Hiện nút Save
+      const saveBtn = document.querySelector('[onclick="CodePenStorage.openSaveModal()"]');
+      if (saveBtn) saveBtn.style.display = isReadOnly ? 'none' : 'inline-block';
+  },
+
     currentSnippets: [], 
     localSnippets: [],  
     selectedImageFile: null,
@@ -52,6 +119,7 @@ const CodePenStorage = {
     authCallback: null,
     pendingSnippet: null,
     LOCAL_KEY: "codepen_local_library",
+    isLocked: false,
 
     // 1. QUẢN LÝ LOCAL
     async saveToLocalDB(item) {
@@ -211,6 +279,10 @@ const CodePenStorage = {
                 updateBtn.style.display = 'none';
             } else { updateBtn.style.display = 'inline-block'; }
         }
+        const accessSection = document.getElementById('access-mode-section');
+        if (accessSection) {
+            accessSection.style.display = (mode === 'local') ? 'none' : 'block';
+        }
     },
 
     openSaveModal() {
@@ -239,8 +311,16 @@ const CodePenStorage = {
     async confirmSave(forceUpdate = false) {
         const name = document.getElementById('snippet-name-input').value.trim() || "Untitled";
         const author = document.getElementById('author-name-input').value.trim();
+        const accessMode = document.getElementById('access-mode-input').value;
+        const password = document.getElementById('password-input').value.trim();
         const activeButtons = document.querySelectorAll('.save-modal-actions .action-btn');
         
+        if (accessMode === 'view' && !password) {
+          alert("❌ Chế độ 'Chỉ xem' bắt buộc phải cài mật khẩu bảo vệ!");
+          activeButtons.forEach(btn => { btn.disabled = false; btn.style.opacity = '1'; });
+          return;
+        }
+
         if (!author) { alert("Vui lòng nhập Tên người dùng!"); return; }
         localStorage.setItem('last_author', author);
         activeButtons.forEach(btn => { btn.disabled = true; btn.style.opacity = '0.5'; });
@@ -259,7 +339,8 @@ const CodePenStorage = {
                   author_name: author,
                   data: compressedData,
                   image_url: document.getElementById('image-preview-element').src,
-                  created_at: new Date().toISOString()
+                  created_at: new Date().toISOString(),
+                  access_mode: 'edit'
               };
               await this.saveToLocalDB(item); // Đợi lưu vào DB xong mới chạy tiếp
               if (!forceUpdate) this.currentEditId = item.id;
@@ -276,7 +357,7 @@ const CodePenStorage = {
                 const response = await fetch(url, {
                     method: method,
                     headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-                    body: JSON.stringify({ name, data: compressedData, image_url: imageUrl, author_name: author, password: password || null })
+                    body: JSON.stringify({ name, data: compressedData, image_url: imageUrl, author_name: author, password: password || null, access_mode: accessMode })
                 });
 
                 if (response.ok) {
@@ -380,24 +461,33 @@ const CodePenStorage = {
 
     // --- CÁC HÀM BỊ THIẾU CẦN KHÔI PHỤC ---
     applySnippet(id) {
-        const isLocal = String(id).startsWith("local_");
-        const item = isLocal ? this.localSnippets.find(s => s.id === id) : this.currentSnippets.find(s => s.id === id);
-        if (!item) return;
-        this.requestAccess(item, () => {
-            this.currentEditId = id; this.currentName = item.name; this.updateNameUI();
-            try {
-                const data = JSON.parse(LZString.decompressFromEncodedURIComponent(item.data));
-                CodePen.editors.html.setValue(data.html || "", -1);
-                CodePen.editors.css.setValue(data.css || "", -1);
-                CodePen.editors.js.setValue(data.js || "", -1);
-                CodePen.externalResources = data.resources || { css: [], js: [] };
-                CodePen.run();
-                if (document.querySelector('.library-modal-overlay')) {
-                    document.querySelector('.library-modal-overlay').remove();
-                }
-            } catch (e) { alert("Lỗi giải nén dữ liệu!"); }
-        });
-    },
+      const isLocal = String(id).startsWith("local_");
+      const item = isLocal ? this.localSnippets.find(s => s.id === id) : this.currentSnippets.find(s => s.id === id);
+      if (!item) return;
+  
+      this.requestAccess(item, () => {
+          this.currentEditId = id; 
+          this.currentName = item.name; 
+          this.updateNameUI();
+          try {
+              const data = JSON.parse(LZString.decompressFromEncodedURIComponent(item.data));
+              CodePen.editors.html.setValue(data.html || "", -1);
+              CodePen.editors.css.setValue(data.css || "", -1);
+              CodePen.editors.js.setValue(data.js || "", -1);
+              CodePen.externalResources = data.resources || { css: [], js: [] };
+              CodePen.run();
+  
+              // CHỈ CẦN DÒNG NÀY: Mọi việc khóa Editor, hiện ổ khóa, ẩn nút Save
+              // đều đã được hàm setReadOnlyMode xử lý.
+              const isLocked = (!isLocal && item.access_mode === 'view');
+              this.setReadOnlyMode(isLocked);
+  
+              if (document.querySelector('.library-modal-overlay')) {
+                  document.querySelector('.library-modal-overlay').remove();
+              }
+          } catch (e) { alert("Lỗi giải nén dữ liệu!"); }
+      });
+  },
 
     editSnippet(id, event) {
         event.stopPropagation();
@@ -466,7 +556,22 @@ const CodePenStorage = {
         document.getElementById('image-preview-element').style.display = 'none';
         CodePenStorage.selectedImageFile = null;
     },
-    resetToNew() { CodePenStorage.currentEditId = null; CodePenStorage.currentName = "Untitled"; CodePenStorage.updateNameUI(); }
+    resetToNew() { 
+      CodePenStorage.currentEditId = null; 
+      CodePenStorage.currentName = "Untitled"; 
+      CodePenStorage.updateNameUI(); 
+      this.setReadOnlyMode(false);
+      
+      // MỞ KHÓA TẤT CẢ EDITOR
+      Object.values(CodePen.editors).forEach(ed => {
+          if (ed) {
+              ed.setReadOnly(false);
+              ed.container.style.opacity = "1";
+          }
+      });
+      const saveBtn = document.querySelector('[onclick="CodePenStorage.openSaveModal()"]');
+      if (saveBtn) saveBtn.style.display = 'inline-block';
+    }
 };
 
 // ĐỒNG BỘ TÊN REAL-TIME KHÔNG MẤT FOCUS
@@ -573,6 +678,11 @@ const CodePen = {
             <div class="codepen-container-main mode-standard">
                 ${headerHtml}
                 <div class="editor-section-bg" id="editor-section">
+                    <div id="lock-overlay">
+                        <div class="lock-overlay-wrap">
+                          <button class="action-btn btn-primary" id="btn-unlock-ui" onclick="CodePenStorage.unlockSnippet()">🔓 Nhập mã để Sửa</button>
+                        </div>
+                    </div>
                     <div class="editor-box" style="flex: 1;"><div class="editor-label"><span>HTML</span><button class="format-btn" onclick="CodePen.formatCode('html')">Format</button></div><div class="editor-content-wrapper"><div id="html-gutter" class="custom-line-numbers"></div><div id="html-code" class="ace-editor-container"></div></div></div>
                     <div class="resizer-h horizontal-resizer"></div>
                     <div class="editor-box" style="flex: 1;"><div class="editor-label"><span>CSS</span><button class="format-btn" onclick="CodePen.formatCode('css')">Format</button></div><div class="editor-content-wrapper"><div id="css-gutter" class="custom-line-numbers"></div><div id="css-code" class="ace-editor-container"></div></div></div>
@@ -709,7 +819,13 @@ const CodePen = {
                     <input type="text" id="author-name-input" placeholder="Tên của bạn..." 
                            style="width:100%; padding:10px; background:#252526; border:1px solid #444; color:white; border-radius:4px; box-sizing:border-box;">
                 </div>
-
+                <div id="access-mode-section" style="margin-bottom:10px;">
+                    <span style="display:block; font-size:10px; color:#ff9800; margin-bottom:4px; font-weight:bold;">CHẾ ĐỘ TRUY CẬP</span>
+                    <select id="access-mode-input" style="width:100%; padding:10px; background:#252526; border:1px solid #444; color:white; border-radius:4px;">
+                        <option value="edit">✏️ Cho phép Sửa (Công khai)</option>
+                        <option value="view">👁️ Chỉ xem (Khóa Editor - Cần Pass)</option>
+                    </select>
+                </div>
                 <div id="password-section">
                     <span style="display:block; font-size:10px; color:#888; margin-bottom:4px; font-weight:bold;">MẬT KHẨU (CHỈ CLOUD)</span>
                     <div id="password-wrapper">
@@ -732,6 +848,20 @@ const CodePen = {
             </div>
         </div>
     </div>
+    <div class="save-modal-overlay" id="unlock-modal-overlay" style="display:none;">
+    <div class="save-modal" style="width: 300px; border-top: 4px solid #ff9800;">
+        <h4 style="margin:0 0 10px 0; color:#eee;">🔓 Mở khóa chỉnh sửa</h4>
+        <p style="font-size: 11px; color: #aaa; margin-bottom: 15px;">Nhập mật khẩu của snippet này để mở quyền sửa.</p>
+        
+        <input type="password" id="unlock-pass-input" placeholder="Nhập mật khẩu..." 
+               style="width:100%; padding:10px; background:#252526; border:1px solid #444; color:white; border-radius:4px; box-sizing:border-box; margin-bottom:15px;">
+        
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+            <button class="action-btn btn-secondary" onclick="document.getElementById('unlock-modal-overlay').style.display='none'">Hủy</button>
+            <button class="action-btn" style="background:#ff9800; color:white;" onclick="CodePenStorage.verifyUnlock()">Xác nhận</button>
+        </div>
+    </div>
+</div>
 `);
 
     this.setupCommonEvents();
@@ -756,6 +886,9 @@ const CodePen = {
       overlay.style.height = `calc(100vh - ${defaultY}px)`;
       this.updateScrollMargins(defaultY);
     }
+    setTimeout(() => {
+      CodePenStorage.setReadOnlyMode(CodePenStorage.isLocked);
+  }, 10);
   },
 
   toggleViewMode() {
