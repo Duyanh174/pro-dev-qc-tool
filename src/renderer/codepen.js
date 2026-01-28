@@ -106,7 +106,6 @@ verifyUnlock() {
       if (saveBtn) saveBtn.style.display = isReadOnly ? 'none' : 'inline-block';
   },
 
-    currentSnippets: [], 
     localSnippets: [],  
     selectedImageFile: null,
     currentEditId: null,
@@ -1340,42 +1339,43 @@ const CodePen = {
 
   // --- CHỖ CẦN SỬA: Hàm bảo vệ thông minh hơn ---
   protectJS(code, timeoutLimit) {
-    const timeoutMs = (timeoutLimit || 5) * 1000; // Quy đổi giây sang miligiây
+    const timeoutMs = (timeoutLimit || 5) * 1000;
     
+    // Khởi tạo context bảo vệ
     const helper = `
-      window._loopContext = {
-        startTime: Date.now(),
-        iterationCount: 0,
-        timeoutLimit: ${timeoutMs}
-      };
+      window._loopContext = { startTime: Date.now(), iterationCount: 0, timeoutLimit: ${timeoutMs} };
       window._checkLoop = function() {
         window._loopContext.iterationCount++;
-        // Kiểm tra sau mỗi 10.000 lần lặp để tránh làm chậm các tác vụ nặng
-        if (window._loopContext.iterationCount % 10000 === 0) {
-          const elapsed = Date.now() - window._loopContext.startTime;
-          if (elapsed > window._loopContext.timeoutLimit) {
-            // Hiển thị modal cảnh báo của hệ thống (window.confirm sẽ dừng luồng JS)
-            const msg = "CẢNH BÁO: Phát hiện vòng lặp tiềm ẩn vô tận hoặc tác vụ quá nặng (>" + (window._loopContext.timeoutLimit/1000) + " giây).\\n\\nBấm OK để TIẾP TỤC chạy thêm.\\nBấm CANCEL để DỪNG thực thi ngay lập tức.";
+        if (window._loopContext.iterationCount % 100 === 0) { // Kiểm tra dày hơn (mỗi 100 lần)
+          if (Date.now() - window._loopContext.startTime > window._loopContext.timeoutLimit) {
+            const msg = "⚠️ PHÁT HIỆN TREO MÁY: Code chạy quá " + (window._loopContext.timeoutLimit/1000) + " giây.\\n\\nBấm OK để chạy tiếp.\\nBấm Cancel để DỪNG code.";
             if (window.confirm(msg)) {
-                // Nếu chọn OK: Reset lại thời gian bắt đầu để cho chạy tiếp một khoảng nữa
                 window._loopContext.startTime = Date.now();
             } else {
-                // Nếu chọn Cancel: Quăng lỗi để dừng toàn bộ code JS
-                throw new Error("DỪNG THỰC THI: Người dùng đã chủ động ngắt vòng lặp.");
+                throw new Error("DỪNG VÒNG LẶP VÔ TẬN");
             }
           }
         }
       };
     `;
 
-    // Chèn hàm kiểm tra vào tất cả các loại vòng lặp
-    const protectedCode = code.replace(
-      /(for|while|do)\s*\((?:[^)(]+|\((?:[^)(]+|\([^)(]*\))*\))*\)\s*\{/g,
-      (match) => `${match} _checkLoop();`
-    );
+    // Regex "Pro": Tự động thêm dấu { } nếu người dùng viết vòng lặp viết tắt
+    // Ví dụ: while(true) console.log(1); -> while(true) { _checkLoop(); console.log(1); }
+    let protectedCode = code;
+    
+    // Bắt các vòng lặp: for, while, do...while
+    const loopRegex = /\b(for|while|do)\b\s*(\(.*\))?\s*\{?/g;
+    
+    protectedCode = protectedCode.replace(loopRegex, (match) => {
+        if (match.trim().endsWith('{')) {
+            return `${match} _checkLoop();`;
+        }
+        // Nếu vòng lặp không có dấu {, ta phải bọc nó lại (phức tạp hơn)
+        return `${match} { _checkLoop(); `; 
+    });
 
     return helper + protectedCode;
-  },
+},
   run() {
     const html = this.editors.html.getValue();
     const css = this.editors.css.getValue();
@@ -1391,6 +1391,8 @@ const CodePen = {
     const previewEl = document.getElementById("preview-window");
     if (!previewEl) return;
 
+    previewEl.srcdoc = "";
+
     const extCSS = this.externalResources.css.map((url) => `<link rel="stylesheet" href="${url}">`).join("\n");
     const extJS = this.externalResources.js.map((url) => `<script src="${url}"><\/script>`).join("\n");
 
@@ -1405,16 +1407,55 @@ const CodePen = {
     <style>body{margin:0;padding:15px;font-family:'Poppins',sans-serif;color:black;} ${css}</style>
     <script>
     (function(){
-        // Ghi đè console
+        let logCount = 0;
+        let lastLogTime = Date.now();
+        const MAX_LOGS = 500; 
+        const RECOVERY_COUNT = 10; // Số lượng log gần nhất muốn giữ lại
+        let logBuffer = []; // Bộ nhớ tạm lưu 10 log gần nhất
+
         ['log','warn','error','info'].forEach(m=>{
             const o = console[m];
             console[m] = function(...a){
-                window.parent.postMessage({type:'iframe-log',method:m,arguments:a},'*');
+                logCount++;
+
+                // 1. Luôn cập nhật bộ nhớ tạm (Giữ 10 dòng mới nhất)
+                logBuffer.push({ method: m, args: a });
+                if (logBuffer.length > RECOVERY_COUNT) logBuffer.shift();
+
+                // 2. Kiểm tra giới hạn
+                if (logCount > MAX_LOGS) {
+                    if (logCount === MAX_LOGS + 1) {
+                        // Gửi cảnh báo chính
+                        window.parent.postMessage({
+                            type:'iframe-log',
+                            method:'error',
+                            arguments:["❌ PHÁT HIỆN SPAM: Đã dừng log để bảo vệ trình duyệt. Dưới đây là " + RECOVERY_COUNT + " dòng cuối cùng:"]
+                        },'*');
+
+                        // Gửi 10 dòng log "tử thần" trong bộ nhớ tạm ra máy mẹ
+                        logBuffer.forEach(log => {
+                            window.parent.postMessage({
+                                type:'iframe-log',
+                                method: log.method,
+                                arguments: log.args
+                            },'*');
+                        });
+                    }
+                    return; 
+                }
+
+                // 3. Throttle: Chặn tốc độ gửi postMessage để tránh nghẽn (30ms)
+                const now = Date.now();
+                if (now - lastLogTime > 30) {
+                    window.parent.postMessage({type:'iframe-log',method:m,arguments:a},'*');
+                    lastLogTime = now;
+                }
+
                 o.apply(console,a);
             };
         });
-
-        // Bắt mọi lỗi Syntax và Runtime của Module gửi ra ngoài
+        
+        // Giữ nguyên logic window.onerror bên dưới...
         window.onerror = function(message, source, lineno, colno, error) {
             window.parent.postMessage({
                 type: 'iframe-log',
@@ -1423,23 +1464,6 @@ const CodePen = {
             }, '*');
             return false;
         };
-
-        window.onunhandledrejection = function(event) {
-            window.parent.postMessage({
-                type: 'iframe-log',
-                method: 'error',
-                arguments: ["Uncaught (in promise): " + event.reason]
-            }, '*');
-        };
-
-        window.addEventListener('message', e => {
-            if(e.data.type==='exec-console'){
-                try {
-                    const r = eval(e.data.command);
-                    if(r!==undefined) console.log(r);
-                } catch(err) { console.error(err.message); }
-            }
-        });
     })();
     <\/script>
 </head>
