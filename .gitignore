@@ -1,3 +1,7 @@
 node_modules/
 dist/
 .DS_Store
+
+# Các file môi trường bảo mật
+.env
+.env.local
