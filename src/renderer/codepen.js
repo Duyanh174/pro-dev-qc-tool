@@ -1,8 +1,5 @@
-// --- THÔNG TIN SUPABASE (PHẢI THAY BẰNG KEY THẬT) ---
-const SUPABASE_URL = "https://pzqwnosbwznoksyervxk.supabase.co";
-const SUPABASE_KEY = "sb_publishable_HyyqMob18yaCwb-GPeakJA__XOO_YU3";
-const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dpn8hugjc/image/upload";
-const CLOUDINARY_PRESET = "codepen_preset";
+
+var SUPABASE_URL, SUPABASE_KEY, CLOUDINARY_URL, CLOUDINARY_PRESET;
 
 const CodePenStorage = {
 
@@ -642,6 +639,25 @@ const CodePen = {
   externalResources: { css: [], js: [] },
 
   async init() { 
+
+    try {
+      const electron = require('electron');
+      const keys = await electron.ipcRenderer.invoke('get-api-keys');
+      
+      // Kiểm tra xem keys có tồn tại không
+      if (keys) {
+          SUPABASE_URL = keys.SUPABASE_URL;
+          SUPABASE_KEY = keys.SUPABASE_KEY;
+          CLOUDINARY_URL = keys.CLOUDINARY_URL;
+          CLOUDINARY_PRESET = keys.CLOUDINARY_PRESET;
+          console.log("✅ API Keys loaded from .env");
+      } else {
+          throw new Error("Keys are empty");
+      }
+  } catch (e) {
+      console.error("❌ Lỗi nạp API Keys từ .env. Kiểm tra lại file .env của bạn!", e);
+      alert("Cảnh báo: Ứng dụng chưa nạp được API Keys. Một số tính năng Cloud sẽ không hoạt động.");
+  }
     // 1. Load dữ liệu bản nháp từ IndexedDB trước
     const savedData = await this.loadFromStorage();
     
