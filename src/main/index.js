@@ -3,14 +3,59 @@ const path = require('path');
 const url = require('url');
 require('dotenv').config(); 
 
-ipcMain.handle('get-api-keys', () => {
-    return {
-        SUPABASE_URL: process.env.SUPABASE_URL,
-        SUPABASE_KEY: process.env.SUPABASE_KEY,
-        CLOUDINARY_URL: process.env.CLOUDINARY_URL,
-        CLOUDINARY_PRESET: process.env.CLOUDINARY_PRESET
+// --- CƠ CHẾ DỰ PHÒNG KHI BUILD APP ---
+// Nếu không tìm thấy Key trong file .env (thường xảy ra sau khi build)
+// Chúng ta sẽ gán trực tiếp Key thật vào process.env để app không bị chết.
+if (!process.env.SUPABASE_KEY) {
+    console.log("⚠️ Không tìm thấy file .env, đang nạp Key dự phòng...");
+    
+    process.env.SUPABASE_URL = "https://pzqwnosbwznoksyervxk.supabase.co";
+    process.env.SUPABASE_KEY = "sb_publishable_HyyqMob18yaCwb-GPeakJA__XOO_YU3";
+    
+    process.env.CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dpn8hugjc/image/upload";
+    process.env.CLOUDINARY_PRESET = "codepen_preset";
+}
+// -------------------------------------
+
+// Thêm thư viện fetch nếu dùng Node bản cũ, hoặc dùng fetch có sẵn từ Node 18+
+// ipcMain.handle('get-api-keys', ...) --> XÓA HÀM NÀY ĐI vì ta không gửi Key về Renderer nữa
+
+// 1. Handler gọi Supabase
+ipcMain.handle('supabase-request', async (event, { method, path, body }) => {
+    const url = `${process.env.SUPABASE_URL}${path}`;
+    const options = {
+        method: method,
+        headers: {
+            'apikey': process.env.SUPABASE_KEY,
+            'Authorization': `Bearer ${process.env.SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        }
     };
+    if (body) options.body = JSON.stringify(body);
+    const response = await fetch(url, options);
+    return await response.json();
 });
+
+// 2. Handler upload ảnh lên Cloudinary
+ipcMain.handle('cloudinary-upload', async (event, base64Image) => {
+    const formData = new URLSearchParams();
+    formData.append("file", base64Image);
+    formData.append("upload_preset", process.env.CLOUDINARY_PRESET);
+
+    try {
+        const response = await fetch(process.env.CLOUDINARY_URL, {
+            method: "POST",
+            body: formData
+        });
+        const data = await response.json();
+        return data.secure_url;
+    } catch (e) {
+        return { error: e.message };
+    }
+});
+
+
 
 let mainWindow;
 let clipboardWindow;

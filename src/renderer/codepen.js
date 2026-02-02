@@ -1,6 +1,3 @@
-
-var SUPABASE_URL, SUPABASE_KEY, CLOUDINARY_URL, CLOUDINARY_PRESET;
-
 const CodePenStorage = {
 
   // --- PHẦN MỚI: KHỞI TẠO INDEXEDDB ---
@@ -113,8 +110,8 @@ verifyUnlock() {
       if (saveBtn) saveBtn.style.display = isReadOnly ? 'none' : 'inline-block';
   },
     currentSnippets: [], 
-    localSnippets: [],  
     selectedImageFile: null,
+    localSnippets: [],  
     currentEditId: null,
     currentName: "Untitled",
     storageMode: "cloud", 
@@ -158,12 +155,16 @@ verifyUnlock() {
 
     // 2. HEARTBEAT
     async keepAlive() {
-        try {
-            await fetch(`${SUPABASE_URL}/rest/v1/snippets?select=id&limit=1`, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-            });
-        } catch (e) { console.warn("Cloud disconnected"); }
-    },
+      try {
+          // Gọi qua Proxy thay vì fetch trực tiếp
+          await ipcRenderer.invoke('supabase-request', {
+              method: 'GET',
+              path: '/rest/v1/snippets?select=id&limit=1'
+          });
+      } catch (e) { 
+          console.warn("Cloud disconnected (via Proxy)"); 
+      }
+  },
 
     // 3. NÉN ẢNH
     async compressImage(base64Str, maxWidth = 800, quality = 0.7) {
@@ -352,26 +353,26 @@ verifyUnlock() {
               if (!forceUpdate) this.currentEditId = item.id;
               alert("✅ Đã lưu vào bộ nhớ IndexedDB (Private)!");
           } else {
-                let password = document.getElementById('password-input').value.trim();
-                let imageUrl = document.getElementById('image-preview-element').src;
-                if (CodePenStorage.selectedImageFile) imageUrl = await this.uploadToCloudinary();
-
-                const isPatch = forceUpdate && CodePenStorage.currentEditId;
-                const method = isPatch ? 'PATCH' : 'POST';
-                const url = isPatch ? `${SUPABASE_URL}/rest/v1/snippets?id=eq.${CodePenStorage.currentEditId}` : `${SUPABASE_URL}/rest/v1/snippets`;
-
-                const response = await fetch(url, {
-                    method: method,
-                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-                    body: JSON.stringify({ name, data: compressedData, image_url: imageUrl, author_name: author, password: password || null, access_mode: accessMode })
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    if (!isPatch && result.length > 0) this.currentEditId = result[0].id;
-                    alert("🚀 Đã chia sẻ lên Cloud!");
-                } else throw new Error();
+            let imageUrl = document.getElementById('image-preview-element').src;
+            if (CodePenStorage.selectedImageFile) imageUrl = await this.uploadToCloudinary();
+        
+            const isPatch = forceUpdate && CodePenStorage.currentEditId;
+            const path = isPatch ? `/rest/v1/snippets?id=eq.${CodePenStorage.currentEditId}` : `/rest/v1/snippets`;
+            const method = isPatch ? 'PATCH' : 'POST';
+        
+            const result = await ipcRenderer.invoke('supabase-request', {
+                method: method,
+                path: path,
+                body: { name, data: compressedData, image_url: imageUrl, author_name: author, password: password || null, access_mode: accessMode }
+            });
+        
+            if (result && !result.error) {
+                if (!isPatch && result.length > 0) this.currentEditId = result[0].id;
+                alert("🚀 Đã chia sẻ lên Cloud!");
+            } else {
+                throw new Error("Lỗi lưu Cloud");
             }
+        }
 
             this.currentName = name;
             this.updateNameUI();
@@ -384,11 +385,13 @@ verifyUnlock() {
     // --- 8. THƯ VIỆN (FIX LỖI GÕ CHỮ TRONG Ô TÌM KIẾM) ---
     async loadLibrary() {
       try {
-          await this.loadLocalLibrary(); // Thêm await vào đây
-          const res = await fetch(`${SUPABASE_URL}/rest/v1/snippets?select=*&order=created_at.desc`, {
-              headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+          await this.loadLocalLibrary();
+          // Thay vì fetch(...), ta gọi qua Main Process
+          const data = await ipcRenderer.invoke('supabase-request', {
+              method: 'GET',
+              path: '/rest/v1/snippets?select=*&order=created_at.desc'
           });
-          this.currentSnippets = await res.json();
+          if (data && !data.error) this.currentSnippets = data;
           this.renderLibraryUI();
       } catch (e) { this.renderLibraryUI(); }
   },
@@ -550,14 +553,10 @@ verifyUnlock() {
 
     // --- PHỤ TRỢ ---
     async uploadToCloudinary() {
-        if (!CodePenStorage.selectedImageFile) return null;
-        const formData = new FormData();
-        formData.append("file", CodePenStorage.selectedImageFile);
-        formData.append("upload_preset", CLOUDINARY_PRESET);
-        const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-        const data = await res.json();
-        return data.secure_url;
-    },
+      if (!CodePenStorage.selectedImageFile) return null;
+      // Gửi thẳng Base64 cho Main Process xử lý
+      return await ipcRenderer.invoke('cloudinary-upload', CodePenStorage.selectedImageFile);
+  },
 
     handleFileSelect(e) {
         const file = e.target.files[0];
@@ -639,32 +638,12 @@ const CodePen = {
   externalResources: { css: [], js: [] },
 
   async init() { 
-
-    try {
-      const electron = require('electron');
-      const keys = await electron.ipcRenderer.invoke('get-api-keys');
-      
-      // Kiểm tra xem keys có tồn tại không
-      if (keys) {
-          SUPABASE_URL = keys.SUPABASE_URL;
-          SUPABASE_KEY = keys.SUPABASE_KEY;
-          CLOUDINARY_URL = keys.CLOUDINARY_URL;
-          CLOUDINARY_PRESET = keys.CLOUDINARY_PRESET;
-          console.log("✅ API Keys loaded from .env");
-      } else {
-          throw new Error("Keys are empty");
-      }
-  } catch (e) {
-      console.error("❌ Lỗi nạp API Keys từ .env. Kiểm tra lại file .env của bạn!", e);
-      alert("Cảnh báo: Ứng dụng chưa nạp được API Keys. Một số tính năng Cloud sẽ không hoạt động.");
-  }
     // 1. Load dữ liệu bản nháp từ IndexedDB trước
     const savedData = await this.loadFromStorage();
     
     // 2. Vẽ giao diện
     this.render(); 
     CodePenStorage.keepAlive(); 
-    
     // 3. Khởi tạo Editor với dữ liệu đã load
     this.initAce(savedData);
     this.initResizers();
