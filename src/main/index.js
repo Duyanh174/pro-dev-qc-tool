@@ -1,6 +1,16 @@
 const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electron');
 const path = require('path');
 const url = require('url');
+require('dotenv').config(); 
+
+ipcMain.handle('get-api-keys', () => {
+    return {
+        SUPABASE_URL: process.env.SUPABASE_URL,
+        SUPABASE_KEY: process.env.SUPABASE_KEY,
+        CLOUDINARY_URL: process.env.CLOUDINARY_URL,
+        CLOUDINARY_PRESET: process.env.CLOUDINARY_PRESET
+    };
+});
 
 let mainWindow;
 let clipboardWindow;
