@@ -8,22 +8,32 @@ const CodePenStorage = {
 
   // --- PHẦN MỚI: KHỞI TẠO INDEXEDDB ---
   DB_NAME: "CodePenCloneDB",
-  DB_VERSION: 1,
+  DB_VERSION: 2,
   STORE_NAME: "local_snippets",
 
   async getDB() {
-      return new Promise((resolve, reject) => {
-          const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
-          request.onupgradeneeded = (e) => {
-              const db = e.target.result;
-              if (!db.objectStoreNames.contains(this.STORE_NAME)) {
-                  db.createObjectStore(this.STORE_NAME, { keyPath: "id" });
-              }
-          };
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject("Lỗi mở IndexedDB");
-      });
-  },
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+        
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            console.log("Đang nâng cấp Database lên phiên bản mới...");
+
+            // Kiểm tra và tạo bảng cho snippets (Thư viện)
+            if (!db.objectStoreNames.contains(this.STORE_NAME)) {
+                db.createObjectStore(this.STORE_NAME, { keyPath: "id" });
+            }
+            
+            // Kiểm tra và tạo bảng cho settings (Bản nháp)
+            if (!db.objectStoreNames.contains("app_settings")) {
+                db.createObjectStore("app_settings");
+            }
+        };
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject("Lỗi mở IndexedDB: " + request.error);
+    });
+},
 
     // --- THÊM HÀM NÀY VÀO ĐẦU ---
     escapeHTML(str) {
@@ -393,9 +403,17 @@ verifyUnlock() {
 
         let sourceData = this.libraryTab === 'local' ? this.localSnippets : this.currentSnippets;
         
+       // Đảm bảo searchQuery luôn là chuỗi
+        const query = (this.searchQuery || "").toLowerCase();
+
         let filtered = sourceData.filter(item => {
-            const query = this.searchQuery.toLowerCase();
-            return item.name.toLowerCase().includes(query) || (item.author_name && item.author_name.toLowerCase().includes(query));
+            if (!item) return false; // Loại bỏ nếu bản ghi bị null
+
+            // Kiểm tra an toàn cho name và author_name (nếu undefined thì coi như chuỗi rỗng)
+            const name = (item.name || "").toLowerCase();
+            const author = (item.author_name || "").toLowerCase();
+
+            return name.includes(query) || author.includes(query);
         });
 
         filtered.sort((a, b) => {
@@ -406,21 +424,27 @@ verifyUnlock() {
         });
 
         listEl.innerHTML = filtered.map(item => {
-            const isLocal = String(item.id).startsWith("local_");
-            const thumbUrl = item.image_url ? (isLocal ? item.image_url : item.image_url.replace('/upload/', '/upload/w_160,h_100,c_fill,q_auto,f_auto/')) : 'https://via.placeholder.com/80x50?text=No+Img';
-            return `
-                <div class="library-item" onclick="CodePenStorage.applySnippet('${item.id}')" style="border-left: 3px solid ${isLocal ? '#007acc' : '#28a745'}">
-                    <img src="${thumbUrl}" class="snippet-thumb" style="width:80px; height:50px; object-fit:cover; border-radius:4px;">
-                    <div class="library-item-info" style="flex:1; margin-left:10px;">
-                      <span style="font-weight:bold">${CodePenStorage.escapeHTML(item.name)} ${item.password ? '🔒' : ''}</span><br>
-                      <small class="author-tag" style="background:${isLocal ? '#007acc22' : '#28a74522'}">👤 ${CodePenStorage.escapeHTML(item.author_name || 'Duy Anh')}</small>
-                    </div>
-                    <div class="library-item-actions">
-                        <span class="edit-btn" onclick="CodePenStorage.editSnippet('${item.id}', event)">✏️</span>
-                        <span class="delete-btn-codepen" onclick="CodePenStorage.deleteSnippet('${item.id}', event)">🗑</span>
-                    </div>
-                </div>`;
-        }).join('') || '<p style="text-align:center; color:#555; padding:20px;">Không tìm thấy kết quả...</p>';
+        const isLocal = String(item.id).startsWith("local_");
+        
+        // Cần bảo vệ CodePenStorage.escapeHTML khỏi giá trị undefined
+        const safeName = CodePenStorage.escapeHTML(item.name || "Untitled");
+        const safeAuthor = CodePenStorage.escapeHTML(item.author_name || "Duy Anh");
+
+        const thumbUrl = item.image_url ? (isLocal ? item.image_url : item.image_url.replace('/upload/', '/upload/w_160,h_100,c_fill,q_auto,f_auto/')) : 'https://via.placeholder.com/80x50?text=No+Img';
+        
+        return `
+            <div class="library-item" onclick="CodePenStorage.applySnippet('${item.id}')" style="border-left: 3px solid ${isLocal ? '#007acc' : '#28a745'}">
+                <img src="${thumbUrl}" class="snippet-thumb" style="width:80px; height:50px; object-fit:cover; border-radius:4px;">
+                <div class="library-item-info" style="flex:1; margin-left:10px;">
+                  <span style="font-weight:bold">${safeName} ${item.password ? '🔒' : ''}</span><br>
+                  <small class="author-tag" style="background:${isLocal ? '#007acc22' : '#28a74522'}">👤 ${safeAuthor}</small>
+                </div>
+                <div class="library-item-actions">
+                    <span class="edit-btn" onclick="CodePenStorage.editSnippet('${item.id}', event)">✏️</span>
+                    <span class="delete-btn-codepen" onclick="CodePenStorage.deleteSnippet('${item.id}', event)">🗑</span>
+                </div>
+            </div>`;
+    }).join('') || '<p style="text-align:center; color:#555; padding:20px;">Không tìm thấy kết quả...</p>';
     },
 
     renderLibraryUI() {
@@ -617,10 +641,19 @@ const CodePen = {
   editors: { html: null, css: null, js: null },
   externalResources: { css: [], js: [] },
 
-  init() { 
+  async init() { 
+    // 1. Load dữ liệu bản nháp từ IndexedDB trước
+    const savedData = await this.loadFromStorage();
+    
+    // 2. Vẽ giao diện
     this.render(); 
     CodePenStorage.keepAlive(); 
-    // Thêm dòng này để tự động chạy code ngay khi khởi tạo
+    
+    // 3. Khởi tạo Editor với dữ liệu đã load
+    this.initAce(savedData);
+    this.initResizers();
+    this.syncThemeColors();
+
     if (this.autoRunEnabled) {
         setTimeout(() => this.run(), 500); 
     }
@@ -1014,8 +1047,8 @@ const CodePen = {
   
 
   // --- LINE NUMBER WRAP LOGIC ---
-  initAce() {
-    const savedData = this.loadFromStorage();
+  initAce(savedData) {
+    // const savedData = this.loadFromStorage();
     const selectedTheme = document.getElementById("theme-selector")?.value || "ace/theme/monokai";
 
     const config = {
@@ -1038,54 +1071,71 @@ const CodePen = {
       const gutterEl = document.getElementById(gutterId);
       editor.setOptions(config);
       editor.session.setMode(`ace/mode/${mode}`);
-      const initialValue =
-        (savedData &&
-          (mode === "javascript" ? savedData.js : savedData[mode])) ||
-        defaultValue;
-      editor.setValue(initialValue, 1);
-
-      const updateLineNumbers = () => {
-        const session = editor.session;
-        const lineCount = session.getLength();
-        let numbersHtml = "";
-        const lineHeight = editor.renderer.lineHeight || 19;
-        for (let i = 0; i < lineCount; i++) {
-          const multiplier = session.getRowLength(i);
-          if (multiplier > 0) {
-            const rowHeight = lineHeight * multiplier;
-            const foldWidget = session.getFoldWidget(i);
-            let foldBtn =
-              foldWidget === "start"
-                ? `<span class="fold-icon ${
-                    session.isRowFolded(i) ? "is-folded" : ""
-                  }" data-row="${i}"></span>`
-                : "";
-            numbersHtml += `<div class="line-number-row" style="height: ${rowHeight}px; line-height: ${lineHeight}px;">${foldBtn}<span class="num-text">${
-              i + 1
-            }</span></div>`;
-          }
-        }
-        gutterEl.innerHTML = numbersHtml;
-      };
-
-      gutterEl.onclick = (e) => {
-        if (e.target.classList.contains("fold-icon"))
-          editor.session.toggleFold(
-            parseInt(e.target.getAttribute("data-row"))
-          );
-      };
+  
+      // Cập nhật vị trí gutter khi cuộn
       editor.renderer.on("afterRender", () => {
-        gutterEl.style.transform = `translateY(${-editor.renderer.getScrollTop()}px)`;
+          gutterEl.style.transform = `translateY(${-editor.renderer.getScrollTop()}px)`;
       });
+  
+      const updateLineNumbers = () => {
+          const session = editor.session;
+          if (!session) return;
+  
+          const lineCount = session.getLength();
+          let numbersHtml = "";
+          const lineHeight = editor.renderer.lineHeight || 19;
+  
+          for (let i = 0; i < lineCount; i++) {
+              const multiplier = session.getRowLength(i);
+              if (multiplier > 0) {
+                  const rowHeight = lineHeight * multiplier;
+                  
+                  // --- FIX CRASH: Kiểm tra hàm tồn tại ---
+                  let foldBtn = "";
+                  if (typeof session.getFoldWidget === "function") {
+                      const foldWidget = session.getFoldWidget(i);
+                      if (foldWidget === "start") {
+                          const isFolded = typeof session.isRowFolded === "function" && session.isRowFolded(i);
+                          foldBtn = `<span class="fold-icon ${isFolded ? "is-folded" : ""}" data-row="${i}"></span>`;
+                      }
+                  }
+  
+                  numbersHtml += `<div class="line-number-row" style="height: ${rowHeight}px; line-height: ${lineHeight}px;">${foldBtn}<span class="num-text">${i + 1}</span></div>`;
+              }
+          }
+          gutterEl.innerHTML = numbersHtml;
+      };
+  
+      gutterEl.onclick = (e) => {
+          if (e.target.classList.contains("fold-icon"))
+              editor.session.toggleFold(parseInt(e.target.getAttribute("data-row")));
+      };
+  
+      // --- LOGIC CHANGE: Tách biệt cập nhật dòng và Auto Run ---
       editor.session.on("change", () => {
-        updateLineNumbers();
-        this.triggerAutoRun();
+          updateLineNumbers();
       });
+  
+      // --- FIX TIẾNG VIỆT: Dùng sự kiện 'input' và 'compositionend' ---
+      editor.on("input", () => {
+          this.triggerAutoRun(); // Chạy mượt cho cả tiếng Anh & Việt
+      });
+  
+      if (editor.inputVisibleField) {
+          editor.inputVisibleField.addEventListener("compositionend", () => {
+              this.triggerAutoRun();
+          });
+      }
+  
       editor.session.on("changeWrapLimit", updateLineNumbers);
       editor.session.on("changeFold", updateLineNumbers);
-      setTimeout(updateLineNumbers, 100);
+  
+      // Đổ dữ liệu vào cuối cùng
+      const initialValue = (savedData && (mode === "javascript" ? savedData.js : savedData[mode])) || defaultValue;
+      editor.setValue(initialValue, 1);
+  
       return editor;
-    };
+  };
     this.editors.html = setupEditor(
       "html-code",
       "html-gutter",
@@ -1255,31 +1305,58 @@ const CodePen = {
       if (ed) ed.renderer.setScrollMargin(10, bottom + 20, 10, 10);
     });
   },
-  triggerAutoRun() {
-    this.saveToStorage();
+  async triggerAutoRun() {
+    await this.saveToStorage(); // Chờ lưu xong vào IndexedDB
     if (!this.autoRunEnabled) return;
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
-    this.debounceTimer = setTimeout(() => this.run(), 200);
+    this.debounceTimer = setTimeout(() => this.run(), 500);
   },
   resizeEditors() {
     Object.values(this.editors).forEach((ed) => ed && ed.resize());
   },
-  saveToStorage() {
-    localStorage.setItem(
-      this.STORAGE_KEY,
-      JSON.stringify({
+  async saveToStorage() {
+    // Đảm bảo editor đã được khởi tạo
+    if (!this.editors.html || !this.editors.css || !this.editors.js) return;
+
+    const data = {
         html: this.editors.html.getValue(),
         css: this.editors.css.getValue(),
         js: this.editors.js.getValue(),
         resources: this.externalResources,
-      })
-    );
+    };
+    
+    try {
+        const db = await CodePenStorage.getDB();
+        if (!db.objectStoreNames.contains("app_settings")) return;
+
+        const transaction = db.transaction(["app_settings"], "readwrite");
+        transaction.objectStore("app_settings").put(data, "current_draft");
+    } catch (e) {
+        console.warn("Lỗi Save draft:", e);
+    }
   },
-  loadFromStorage() {
-    const saved = localStorage.getItem(this.STORAGE_KEY);
-    const data = saved ? JSON.parse(saved) : null;
-    if (data && data.resources) this.externalResources = data.resources;
-    return data;
+
+  async loadFromStorage() {
+    try {
+        const db = await CodePenStorage.getDB();
+        
+        // Bảo vệ: Nếu vì lý do gì đó bảng vẫn chưa tồn tại, trả về null thay vì báo lỗi crash app
+        if (!db.objectStoreNames.contains("app_settings")) {
+            return null;
+        }
+
+        return new Promise((resolve) => {
+            const transaction = db.transaction(["app_settings"], "readonly");
+            const store = transaction.objectStore("app_settings");
+            const request = store.get("current_draft");
+            
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => resolve(null);
+        });
+    } catch (e) {
+        console.error("Lỗi Load draft:", e);
+        return null;
+    }
   },
   openCDNModal() {
     document.getElementById("cdn-modal-overlay").style.display = "flex";
