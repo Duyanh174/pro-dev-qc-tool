@@ -125,14 +125,19 @@ const App = {
 };
 
 const Compiler = {
-    async run(file, projectId) {
-        if (!file.endsWith('.scss') || path.basename(file).startsWith('_')) return;
+    // Hàm thực hiện biên dịch thực tế
+    async compileAction(file, projectId) {
         const project = App.projects.find(p => p.id === projectId);
-        if (!project || !project.inputDir) return;
+        if (!project) return;
 
         try {
             const target = this.getOutPath(file, project);
-            const result = await sass.compileAsync(file, { style: 'expanded', sourceMap: true });
+            const result = await sass.compileAsync(file, { 
+                style: 'expanded', 
+                sourceMap: true,
+                loadPaths: [project.inputDir, path.dirname(file)] // Thêm path hiện tại để @use chính xác hơn
+            });
+
             let finalCss = result.css;
             if (App.config.autoprefixer) {
                 const processed = await postcss([autoprefixer]).process(finalCss, { from: undefined });
@@ -140,16 +145,56 @@ const Compiler = {
             }
             fs.writeFileSync(target, finalCss);
             
-            // LOGIC: Đánh dấu lỗi cũ đã được fix
             this.markErrorAsFixed(project, file);
+            UI.log(projectId, `Cập nhật thành công: ${path.basename(target)}`, 'success');
 
-            UI.log(projectId, `Biên dịch thành công: ${path.basename(target)}`, 'success');
-            if (App.config.web) this.broadcast({ type: 'clear' });
+            if (App.config.web) {
+                this.broadcast({ type: 'reload' }); 
+            }
         } catch (e) {
             this.handleError(projectId, file, e);
         }
     },
 
+    // Hàm điều hướng khi có sự thay đổi file
+    async run(file, projectId) {
+        const project = App.projects.find(p => p.id === projectId);
+        if (!project || !project.inputDir) return;
+
+        // Nếu là file partial (ví dụ: _variables.scss)
+        if (path.basename(file).startsWith('_')) {
+            UI.log(projectId, `Phát hiện thay đổi tại file con: ${path.basename(file)}`, 'warn');
+            // Gọi hàm quét và biên dịch lại các file chính
+            await this.recompileMainFiles(project.inputDir, projectId);
+        } else if (file.endsWith('.scss')) {
+            // Nếu là file chính, biên dịch trực tiếp
+            await this.compileAction(file, projectId);
+        }
+    },
+
+    // Quét đệ quy để tìm tất cả file .scss chính (không có _) và biên dịch chúng
+    async recompileMainFiles(dir, projectId) {
+        const items = fs.readdirSync(dir);
+        
+        for (const item of items) {
+            const fullPath = path.join(dir, item);
+            const stat = fs.statSync(fullPath);
+
+            if (stat.isDirectory()) {
+                if (item !== 'node_modules' && !item.startsWith('.')) {
+                    await this.recompileMainFiles(fullPath, projectId);
+                }
+            } else {
+                // Chỉ biên dịch những file .scss KHÔNG bắt đầu bằng dấu _
+                if (item.endsWith('.scss') && !item.startsWith('_')) {
+                    // Gọi compileAction trực tiếp để tránh vòng lặp kiểm tra _
+                    await this.compileAction(fullPath, projectId);
+                }
+            }
+        }
+    },
+
+    // --- Các hàm phụ trợ giữ nguyên ---
     markErrorAsFixed(project, file) {
         let hasChanges = false;
         project.logs.forEach(log => {
@@ -183,20 +228,14 @@ const Compiler = {
 
     handleError(projectId, file, e) {
         const line = e.span ? e.span.start.line + 1 : 1;
-        
-        // BƯỚC 1: Loại bỏ mã màu ANSI (như [34m) để không bị mất text hoặc lỗi hiển thị
         let rawMsg = e.message.replace(/\x1B\[[0-9;]*[mK]/g, '');
-        
-        // BƯỚC 2: Lấy nội dung lỗi chính xác, tránh cắt nhầm
-        // Sass thường để nội dung lỗi trước ký tự '╷'
         const cleanMsg = rawMsg.split('╷')[0].trim(); 
-        
         const msg = `${path.basename(file)} (Dòng ${line}): ${cleanMsg}`;
         
         UI.log(projectId, msg, 'error', file, line);
         if (App.config.web) this.broadcast({ type: 'error', message: msg });
         if (App.config.native) new Notification("Sass Compile Error", { body: msg });
-    },
+    }
 };
 
 const Watcher = {
@@ -318,10 +357,12 @@ const UI = {
             const item = document.createElement('div');
             item.className = `project-item ${App.activeProjectId === p.id ? 'active' : ''}`;
             item.innerHTML = `
-                <div class="avatar">${p.name.substring(0, 2).toUpperCase()}</div>
-                <div class="name-box">
-                    <div class="name">${p.name}</div>
-                    <div class="dir-hint">${p.inputDir ? path.basename(p.inputDir) : 'No folder'}</div>
+                <div class="project-item-wrap">
+                    <div class="avatar">${p.name.substring(0, 2).toUpperCase()}</div>
+                    <div class="name-box">
+                        <div class="name">${p.name}</div>
+                        <div class="dir-hint">${p.inputDir ? path.basename(p.inputDir) : 'No folder'}</div>
+                    </div>
                 </div>
                 <div class="delete-btn" onclick="App.deleteProject('${p.id}', event)">×</div>
             `;
@@ -345,16 +386,24 @@ const UI = {
     },
 
     initialScan: (dir, projectId) => {
+        let count = 0; // Biến đếm file
         try {
             const files = fs.readdirSync(dir);
             files.forEach(f => {
                 const fp = path.join(dir, f);
                 const stat = fs.statSync(fp);
                 if (stat.isDirectory()) {
-                    if (f !== 'node_modules' && !f.startsWith('.')) UI.initialScan(fp, projectId);
-                } else if (f.endsWith('.scss')) Compiler.run(fp, projectId);
+                    if (f !== 'node_modules' && !f.startsWith('.')) {
+                        // Cộng dồn kết quả từ thư mục con
+                        count += UI.initialScan(fp, projectId);
+                    }
+                } else if (f.endsWith('.scss')) {
+                    Compiler.run(fp, projectId);
+                    count++; // Tìm thấy 1 file
+                }
             });
         } catch(e) {}
+        return count; // Trả về tổng số file tìm thấy
     },
 
     showProjectModal: () => {
@@ -372,12 +421,33 @@ const UI = {
 };
 
 // --- EVENTS ---
-window.setMode = (m) => {
+window.setMode = async (m) => {
     const project = App.getActiveProject();
-    if (project) { project.mode = m; App.save(); }
+    if (!project) return;
+
+    const oldMode = project.mode;
+    project.mode = m;
+    App.save();
+
+    // Cập nhật giao diện
     document.getElementById('modeSame').classList.toggle('active', m === 'same');
     document.getElementById('modeCustom').classList.toggle('active', m === 'custom');
     document.getElementById('outputCard').style.visibility = (m === 'custom') ? 'visible' : 'hidden';
+
+    // Xử lý biên dịch hàng loạt để đồng bộ hóa
+    if (oldMode !== m && project.inputDir) {
+        if (m === 'custom' && !project.outputDir) {
+            UI.log(project.id, "Lưu ý: Bạn cần chọn TARGET CSS để hoàn tất cấu trúc Custom.", "warn");
+            return;
+        }
+
+        UI.log(project.id, `Đang đồng bộ hóa toàn bộ sang chế độ: ${m.toUpperCase()}...`, 'warn');
+        
+        // BIÊN DỊCH HÀNG LOẠT NGAY TẠI ĐÂY
+        await Compiler.recompileMainFiles(project.inputDir, project.id);
+        
+        UI.log(project.id, `Đã đồng bộ hóa xong tất cả các file.`, 'success');
+    }
 };
 
 window.showTab = (id) => {
@@ -404,18 +474,40 @@ document.getElementById('btnIn').addEventListener('click', async () => {
         document.getElementById('txtIn').innerText = project.inputDir;
         document.getElementById('active-project-path').innerText = project.inputDir;
         App.save(); UI.renderProjectList();
+        
         UI.log(project.id, "Bắt đầu quét thư mục...", 'warn');
-        UI.initialScan(project.inputDir, project.id); Watcher.start(project.id);
+        
+        // Thực hiện quét và lấy số lượng file
+        const foundFiles = UI.initialScan(project.inputDir, project.id);
+        
+        if (foundFiles === 0) {
+            // Log ra lỗi nếu không tìm thấy file .scss
+            UI.log(project.id, "Lỗi: Thư mục này không chứa bất kỳ file .scss nào!", 'error');
+            if (App.config.native) new Notification("Dev-QC Pro", { body: "Không tìm thấy file .scss trong thư mục đã chọn." });
+        } else {
+            UI.log(project.id, `Đã tìm thấy và xử lý ${foundFiles} file .scss.`, 'success');
+        }
+
+        Watcher.start(project.id);
     }
 });
 
 document.getElementById('btnOut').addEventListener('click', async () => {
-    const project = App.getActiveProject(); if (!project) return;
+    const project = App.getActiveProject(); 
+    if (!project) return;
+
     const res = await ipcRenderer.invoke('select-folder');
     if (!res.canceled) {
         project.outputDir = res.filePaths[0];
         document.getElementById('txtOut').innerText = project.outputDir;
-        App.save(); UI.log(project.id, `Đã đổi folder đích.`, 'success');
+        App.save(); 
+        
+        UI.log(project.id, `Mục tiêu mới đã được xác định. Đang khởi tạo file CSS...`, 'warn');
+        
+        // CHẠY BIÊN DỊCH HÀNG LOẠT
+        await Compiler.recompileMainFiles(project.inputDir, project.id);
+        
+        UI.log(project.id, `Đã xuất toàn bộ CSS sang thư mục mới thành công.`, 'success');
     }
 });
 
@@ -425,8 +517,10 @@ document.getElementById('confirm-project-btn').addEventListener('click', () => {
 });
 
 document.getElementById('btnStop').addEventListener('click', () => Watcher.stop(App.activeProjectId));
-document.getElementById('btnResume').addEventListener('click', () => Watcher.start(App.activeProjectId));
-window.clearLogs = () => {
+document.getElementById('btnResume').addEventListener('click', () => {
+    Watcher.start(App.activeProjectId);
+    UI.log(App.activeProjectId, "Engine đã hoạt động trở lại.", "success");
+});window.clearLogs = () => {
     const project = App.getActiveProject();
     if (project) { project.logs = []; App.save(); UI.renderLogs([]); }
 };

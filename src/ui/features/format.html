@@ -1,0 +1,44 @@
+<div class="format-feature-container">
+    <header class="format-toolbar">
+        <div class="toolbar-group">
+            <span class="group-label">Language</span>
+            <select id="format-lang-select" class="format-select" onchange="FormatModule.updateAceMode(this.value)">
+                <optgroup label="Data">
+                    <option value="json" selected>✨ Beauty JSON</option>
+                    <option value="json5">JSON5</option>
+                </optgroup>
+                <optgroup label="Code">
+                    <option value="babel">JavaScript</option>
+                    <option value="typescript">TypeScript</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS / SCSS</option>
+                </optgroup>
+            </select>
+        </div>
+
+        <div class="toolbar-group central-actions">
+            <button class="btn-action btn-primary" onclick="FormatModule.format()">🧹 Format</button>
+            <div class="btn-divider"></div>
+            <button class="btn-action btn-util" onclick="FormatModule.minify()">📦 Minify</button>
+            <button class="btn-action btn-util" onclick="FormatModule.sortJSON()">🔠 Sort Key</button>
+            <button class="btn-action btn-util" onclick="FormatModule.toCSV()">📊 To CSV</button>
+            <button class="btn-action btn-util" onclick="FormatModule.toPlaintext()">📝 To Text</button>
+        </div>
+
+        <div class="toolbar-group">
+            <button class="btn-action btn-secondary" onclick="FormatModule.copy()">📋 Copy</button>
+            <button class="btn-action btn-danger" onclick="FormatModule.clear()">🗑 Clear</button>
+        </div>
+    </header>
+
+    <div class="format-main-workspace">
+        <div class="editor-shell">
+            <div class="editor-header">INPUT</div>
+            <div id="format-input-editor" class="ace-format-instance"></div>
+        </div>
+        <div class="editor-shell">
+            <div class="editor-header">OUTPUT</div>
+            <div id="format-output-editor" class="ace-format-instance"></div>
+        </div>
+    </div>
+</div>

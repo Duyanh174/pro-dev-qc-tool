@@ -1,0 +1,44 @@
+<div class="cb-ios-wrapper">
+    <header class="cb-header">
+        <div class="cb-header-left">
+            <span class="cb-label">Tab</span>
+            <label class="ios-switch">
+                <input type="checkbox" id="cb-mode-switch" onchange="ClipboardFlow.toggleFloatingMode(this.checked)">
+                <span class="slider"></span>
+            </label>
+            <span class="cb-label">Window</span>
+            <div class="cb-shortcut-hint">
+                <span class="hint-text">Mở nhanh bằng:</span>
+                <kbd class="cb-kbd">Ctrl</kbd> + <kbd class="cb-kbd">⌘ cmd</kbd> + <kbd class="cb-kbd">V</kbd>
+            </div>
+        </div>
+        <div class="cb-header-right">
+            <button class="cb-btn-text" onclick="ClipboardFlow.clearRecent()">Clear All</button>
+        </div>
+    </header>
+
+    <div class="cb-search-area">
+        <div class="cb-search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="cb-search" placeholder="Tìm kiếm nội dung..." oninput="ClipboardFlow.performSearch()">
+        </div>
+    </div>
+
+    <div class="cb-scroll-content">
+        <details open class="cb-section">
+            <summary class="cb-section-title">
+                <span class="title-text">📌 ĐÃ GHIM</span>
+                <span class="cb-count" id="pin-count">0</span>
+            </summary>
+            <div id="cb-pinned-list" class="cb-list"></div>
+        </details>
+
+        <details open class="cb-section">
+            <summary class="cb-section-title">
+                <span class="title-text">🕒 GẦN ĐÂY</span>
+                <span class="cb-count" id="recent-count">0</span>
+            </summary>
+            <div id="cb-recent-list" class="cb-list"></div>
+        </details>
+    </div>
+</div>

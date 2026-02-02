@@ -1,46 +1,115 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electron');
 const path = require('path');
+const url = require('url');
 
 let mainWindow;
+let clipboardWindow;
 
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1100,
         height: 800,
-        backgroundColor: '#12141d', // Giúp giao diện mượt mà, không bị trắng khi load
+        backgroundColor: '#12141d',
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
             backgroundThrottling: false 
         }
     });
-
     mainWindow.loadFile(path.join(__dirname, '../ui/index.html'));
 }
 
 // ========================================================
-// IPC HANDLERS - CHỈ CÒN NHỮNG GÌ THỰC SỰ CẦN THIẾT
+// LOGIC CLIPBOARD WINDOW (STANDALONE)
 // ========================================================
 
-// Xử lý chọn thư mục (Duy nhất 1 handler, không lo lỗi "second handler")
+function createClipboardWindow() {
+    if (clipboardWindow && !clipboardWindow.isDestroyed()) {
+        clipboardWindow.focus();
+        return;
+    }
+
+    clipboardWindow = new BrowserWindow({
+        width: 380,
+        height: 600,
+        frame: true,         // Thanh điều hướng mặc định
+        alwaysOnTop: true,
+        title: "Clipboard Manager",
+        backgroundColor: '#ffffff',
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            webSecurity: false 
+        }
+    });
+
+    const startUrl = url.format({
+        pathname: path.join(__dirname, '../ui/features/clipboard-standalone.html'),
+        protocol: 'file:',
+        slashes: true
+    });
+
+    clipboardWindow.loadURL(startUrl);
+
+    clipboardWindow.on('closed', () => {
+        // FIX LỖI 2: Kiểm tra mainWindow còn sống không trước khi send
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('clipboard-window-status', false);
+        }
+        clipboardWindow = null;
+    });
+}
+
+// Lắng nghe sự kiện toggle từ Renderer
+ipcMain.on('toggle-clipboard-window', (event, isWindow) => {
+    if (isWindow) {
+        createClipboardWindow();
+    } else {
+        if (clipboardWindow && !clipboardWindow.isDestroyed()) {
+            clipboardWindow.close();
+        }
+    }
+});
+
+ipcMain.on('close-clipboard-ui', () => {
+    if (clipboardWindow && !clipboardWindow.isDestroyed()) {
+        clipboardWindow.close();
+    }
+});
+
+// ========================================================
+// IPC HANDLERS & GLOBAL SHORTCUT
+// ========================================================
+
 ipcMain.handle('select-folder', async () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
     return await dialog.showOpenDialog(mainWindow, { 
         properties: ['openDirectory', 'createDirectory'] 
     });
 });
 
-// ========================================================
-// VÒNG ĐỜI ỨNG DỤNG
-// ========================================================
+app.whenReady().then(() => {
+    createWindow();
 
-app.whenReady().then(createWindow);
+    // FIX LỖI 1: Phím tắt Control + Command + V
+    globalShortcut.register('CommandOrControl+Control+V', () => {
+        createClipboardWindow();
+        
+        // Kiểm tra an toàn trước khi cập nhật Switch ở mainWindow
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('clipboard-window-status', true);
+        }
+    });
+});
+
+app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
+});
 
 app.on('window-all-closed', () => {
-    // Thoát app hoàn toàn khi đóng cửa sổ (trên Windows/Linux)
     if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('activate', () => {
-    // Trên Mac, tạo lại cửa sổ khi bấm vào icon ở Dock
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });

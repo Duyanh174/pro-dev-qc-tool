@@ -1,0 +1,205 @@
+/* --- Khung nền chính --- */
+.feedback-wrapper {
+    height: 100vh;
+    width:100%;
+    overflow-y: auto;
+    background-color: #f2f2f7; /* Màu nền xám nhạt iOS */
+    padding-bottom: 10px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+}
+
+.fb-ios-container {
+    width: 100%;
+    max-width: 550px;
+    padding: 10px 20px;
+    animation: fadeIn 0.5s ease;
+}
+
+/* --- Header & Badge --- */
+.fb-header {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.fb-badge {
+    background-color: #007aff;
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    display: inline-block;
+    margin-bottom: 12px;
+}
+
+.fb-header h1 {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1c1c1e;
+    margin: 0 0 8px 0;
+    letter-spacing: -1px;
+}
+
+.fb-header p {
+    font-size: 15px;
+    color: #8e8e93;
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* --- Thẻ Card chứa Form --- */
+.fb-card {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 14px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+.fb-group {
+    margin-bottom: 11px;
+    display: flex;
+    flex-direction: column;
+}
+
+.fb-group label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #3a3a3c;
+    margin-bottom: 10px;
+    padding-left: 4px;
+}
+
+/* --- Input & Textarea --- */
+.fb-group input, 
+.fb-group textarea {
+    background: #f2f2f7;
+    border: 1.5px solid transparent;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 15px;
+    font-family: inherit;
+    color: #1c1c1e;
+    outline: none;
+    transition: all 0.25s ease;
+}
+
+.fb-group input:focus, 
+.fb-group textarea:focus {
+    background: #ffffff;
+    border-color: #007aff;
+    box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+}
+
+.fb-group textarea {
+    height: 80px;
+    resize: none;
+    line-height: 1.5;
+}
+
+/* --- Đánh giá sao (iOS Style) --- */
+.fb-rating-wrapper {
+    background: #f9f9fb;
+    padding: 15px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.fb-rating {
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 6px;
+}
+
+.fb-rating input { display: none; }
+
+.fb-rating label {
+    font-size: 26px;
+    cursor: pointer;
+    transition: transform 0.2s ease, filter 0.2s ease;
+    filter: grayscale(1) brightness(1.5);
+}
+
+.fb-rating input:checked ~ label, 
+.fb-rating label:hover ~ label, 
+.fb-rating label:hover {
+    filter: grayscale(0) brightness(1);
+    transform: scale(1.1);
+}
+
+.rating-hint {
+    font-size: 12px;
+    color: #aeaeb2;
+    font-weight: 500;
+}
+
+/* --- Nút bấm --- */
+.fb-submit-btn {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, #007aff, #0056b3);
+    color: #ffffff;
+    border: none;
+    border-radius: 16px;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+    box-shadow: 0 8px 20px rgba(0, 74, 179, 0.2);
+}
+
+.fb-submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 25px rgba(0, 74, 179, 0.3);
+    filter: brightness(1.1);
+}
+
+.fb-submit-btn:active {
+    transform: translateY(0);
+    filter: brightness(0.9);
+}
+
+/* --- Tip chân trang --- */
+.fb-footer-tip {
+    margin-top: 30px;
+    background: rgba(0, 122, 255, 0.05);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px dashed rgba(0, 122, 255, 0.2);
+}
+
+.tip-icon { font-size: 20px; }
+
+.fb-footer-tip p {
+    margin: 0;
+    font-size: 13px;
+    color: #004085;
+    line-height: 1.4;
+}
+
+/* --- Animation --- */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom scrollbar cho iOS feel */
+.feedback-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+.feedback-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+.feedback-wrapper::-webkit-scrollbar-thumb {
+    background: #d1d1d6;
+    border-radius: 10px;
+}

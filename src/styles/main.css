@@ -19,7 +19,7 @@
 
 * {
     box-sizing: border-box;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    /* transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); */
 }
 
 body {
@@ -106,6 +106,7 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+    justify-content: space-between;
 }
 
 .project-item:hover {
@@ -137,12 +138,24 @@ body {
 }
 
 .project-item .name {
-    font-size: 13px;
+    font-size: 17px;
     font-weight: 600;
     color: var(--text-dim);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+
+.project-item-wrap{
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.dir-hint{
+    color: #8492a6;
+    font-size: 14px;
 }
 
 .project-item.active .name {
@@ -198,7 +211,7 @@ body {
 }
 
 .workspace-header {
-    margin-bottom: 30px;
+    margin-bottom: 0px;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -214,6 +227,7 @@ body {
     font-size: 11px;
     color: var(--text-dim);
     margin-top: 6px;
+    margin-bottom: 6px;
     font-family: 'JetBrains Mono', monospace;
     opacity: 0.7;
 }
@@ -453,7 +467,7 @@ body {
     height: 0;
 }
 
-.slider {
+#tab-settings .slider { 
     position: absolute;
     cursor: pointer;
     inset: 0;
@@ -462,7 +476,7 @@ body {
     border-radius: 34px;
 }
 
-.slider:before {
+#tab-settings .slider:before {
     position: absolute;
     content: "";
     height: 22px;
@@ -475,11 +489,11 @@ body {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 }
 
-input:checked+.slider {
+#tab-settings input:checked+.slider {
     background-color: var(--success);
 }
 
-input:checked+.slider:before {
+#tab-settings input:checked+.slider:before {
     transform: translateX(20px);
 }
 
@@ -555,7 +569,7 @@ input:checked+.slider:before {
 
 /* --- SETTINGS TAB LAYOUT --- */
 .settings-wrapper {
-    max-width: 800px;
+    max-width: 980px;
     margin: 0 auto;
     width: 100%;
 }
@@ -564,7 +578,7 @@ input:checked+.slider:before {
 .module-selector-nav {
     display: flex;
     gap: 12px;
-    margin-bottom: 30px;
+    margin-bottom: 15px;
     background: rgba(255, 255, 255, 0.03);
     padding: 6px;
     border-radius: 14px;
@@ -597,7 +611,7 @@ input:checked+.slider:before {
 
 /* Card chứa các dòng cài đặt */
 .config-card {
-    padding: 10px 25px;
+    padding: 10px 10px;
     background: var(--bg-card);
     border-radius: 20px;
     border: 1px solid var(--border);
@@ -607,8 +621,8 @@ input:checked+.slider:before {
     font-size: 14px;
     font-weight: 700;
     color: var(--accent);
-    margin-top: 20px;
-    margin-bottom: 20px;
+    margin-top: 0px;
+    margin-bottom: 0px;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -660,7 +674,7 @@ input:checked+.slider:before {
     height: 0;
 }
 
-.slider {
+#tab-settings .slider {
     position: absolute;
     cursor: pointer;
     top: 0;
@@ -674,7 +688,7 @@ input:checked+.slider:before {
 }
 
 /* Nút tròn trắng bên trong */
-.slider:before {
+#tab-settings .slider:before {
     position: absolute;
     content: "";
     height: 24px;
@@ -689,23 +703,23 @@ input:checked+.slider:before {
 }
 
 /* Hiệu ứng khi được bật */
-input:checked+.slider {
+#tab-settings input:checked+.slider {
     background-color: var(--success);
     /* Màu xanh Emerald của bạn */
 }
 
 /* Di chuyển nút tròn khi bật */
-input:checked+.slider:before {
+#tab-settings input:checked+.slider:before {
     transform: translateX(22px);
 }
 
 /* Hiệu ứng nhấn giữ (Active state) */
-.switch:active .slider:before {
+#tab-settings .switch:active .slider:before {
     width: 28px;
     /* Nút tròn hơi dài ra một chút khi nhấn (giống iPhone thật) */
 }
 
-input:checked:active+.slider:before {
+#tab-settings input:checked:active+.slider:before {
     transform: translateX(18px);
     /* Điều chỉnh lại vị trí khi nhấn giữ */
 }
@@ -818,4 +832,10 @@ input:checked:active+.slider:before {
     background: var(--warning);
     color: #000;
     border-color: var(--warning);
+}
+
+.name-box{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }

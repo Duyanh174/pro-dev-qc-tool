@@ -1,0 +1,114 @@
+.format-wrapper {
+    height: 100%;
+    width: 100%;
+    padding: 15px;
+    background: var(--bg-dark);
+}
+
+.format-feature-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 15px;
+}
+
+/* Toolbar logic */
+.format-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    padding: 10px 15px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.group-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* Nút bấm gọn gàng */
+.btn-action {
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-primary { background: var(--accent); color: #000; }
+.btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.btn-util { background: #333; color: #ccc; }
+.btn-util:hover { background: #444; color: #fff; }
+
+.btn-secondary { background: transparent; border: 1px solid var(--border); color: #ccc; }
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-danger { background: transparent; border: 1px solid #442222; color: #ff5555; }
+.btn-danger:hover { background: #442222; }
+
+/* Phân cách các nhóm nút chính */
+.btn-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 5px;
+}
+
+/* Select tùy chỉnh */
+.format-select {
+    background: #121212;
+    color: var(--accent);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    outline: none;
+}
+
+/* Workspace Grid */
+.format-main-workspace {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    min-height: 0;
+}
+
+.editor-shell {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.editor-header {
+    background: rgba(255,255,255,0.03);
+    padding: 5px 12px;
+    font-size: 10px;
+    font-weight: 800;
+    color: #666;
+    border-bottom: 1px solid var(--border);
+}
+
+.ace-format-instance {
+    flex: 1;
+    width: 100%;
+}
