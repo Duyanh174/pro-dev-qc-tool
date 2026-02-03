@@ -91,24 +91,22 @@ verifyUnlock() {
 
     // Hàm phụ để bật/tắt trạng thái khóa của toàn bộ ứng dụng
     setReadOnlyMode(isReadOnly) {
-      this.isLocked = isReadOnly; // <-- QUAN TRỌNG: Lưu lại trạng thái vào bộ nhớ
+      this.isLocked = isReadOnly;
   
-      // 1. Khóa/Mở các editor Ace
       Object.values(CodePen.editors).forEach(ed => {
           if (ed) {
               ed.setReadOnly(isReadOnly);
+              // Dùng opacity thấp để người dùng biết là đang bị khóa
               ed.container.style.opacity = isReadOnly ? "0.6" : "1";
           }
       });
   
-      // 2. Ẩn/Hiện Overlay ổ khóa
       const lockOverlay = document.getElementById('lock-overlay');
       if (lockOverlay) lockOverlay.style.display = isReadOnly ? 'flex' : 'none';
   
-      // 3. Ẩn/Hiện nút Save
       const saveBtn = document.querySelector('[onclick="CodePenStorage.openSaveModal()"]');
       if (saveBtn) saveBtn.style.display = isReadOnly ? 'none' : 'inline-block';
-  },
+    },
     currentSnippets: [], 
     selectedImageFile: null,
     localSnippets: [],  
@@ -645,7 +643,7 @@ const CodePen = {
     this.render(); 
     CodePenStorage.keepAlive(); 
     // 3. Khởi tạo Editor với dữ liệu đã load
-    this.initAce(savedData);
+    // this.initAce(savedData);
     this.initResizers();
     this.syncThemeColors();
 
@@ -919,9 +917,28 @@ const CodePen = {
   },
 
   toggleViewMode() {
+    // 1. Lấy dữ liệu mới nhất trực tiếp từ các Editor hiện tại (trước khi UI bị xóa)
+    const currentData = {
+      html: this.editors.html ? this.editors.html.getValue() : "",
+      css: this.editors.css ? this.editors.css.getValue() : "",
+      js: this.editors.js ? this.editors.js.getValue() : "",
+      resources: this.externalResources
+    };
+
+    // 2. Chuyển đổi chế độ
     this.viewMode = this.viewMode === "standard" ? "split" : "standard";
+
+    // 3. Vẽ lại giao diện (Lưu ý: render() sẽ xóa các object editor cũ)
     this.render();
+
+    // 4. Khởi tạo lại Ace Editor với dữ liệu vừa lấy được (Đảm bảo đồng bộ 100%)
+    this.initAce(currentData);
+
+    // 5. Chạy lại code ngay lập tức để đồng bộ Preview
     this.run();
+    
+    // 6. Áp dụng lại trạng thái Khóa nếu Snippet đang ở mode View
+    CodePenStorage.setReadOnlyMode(CodePenStorage.isLocked);
   },
 
   switchTab(tab, btn) {
@@ -1431,8 +1448,7 @@ const CodePen = {
       };
     `;
 
-    // Regex "Pro": Tự động thêm dấu { } nếu người dùng viết vòng lặp viết tắt
-    // Ví dụ: while(true) console.log(1); -> while(true) { _checkLoop(); console.log(1); }
+  
     let protectedCode = code;
     
     // Bắt các vòng lặp: for, while, do...while
@@ -1467,7 +1483,6 @@ run() {
   const extCSS = this.externalResources.css.map((url) => `<link rel="stylesheet" href="${url}">`).join("\n");
   const extJS = this.externalResources.js.map((url) => `<script src="${url}"><\/script>`).join("\n");
 
-  // PHẦN 1: Chứa toàn bộ HTML, CSS và Logic hệ thống (Dừng lại ngay trước khi nạp JS người dùng)
   const headerContent = `<!DOCTYPE html>
 <html>
 <head>
@@ -1536,12 +1551,9 @@ run() {
       if(typeof gsap!=='undefined') gsap.registerPlugin(ScrollTrigger,Draggable);
 `;
 
-  // PHẦN 2: Tính toán số dòng của (HeaderContent + helper của protectJS)
-  // helper nằm ở đầu biến 'js', chúng ta lấy số dòng của nó
   const helperLines = js.split('\n').length - rawJS.split('\n').length;
   const offsetValue = headerContent.split('\n').length + helperLines;
 
-  // Ghép và ghi đè giá trị offset thực tế vào mã nguồn Iframe
   const finalContent = headerContent.replace('window._lineOffset = 0;', `window._lineOffset = ${offsetValue};`) + `
       ${js}
   <\/script>

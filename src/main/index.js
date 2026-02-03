@@ -4,8 +4,6 @@ const url = require('url');
 require('dotenv').config(); 
 
 // --- CƠ CHẾ DỰ PHÒNG KHI BUILD APP ---
-// Nếu không tìm thấy Key trong file .env (thường xảy ra sau khi build)
-// Chúng ta sẽ gán trực tiếp Key thật vào process.env để app không bị chết.
 if (!process.env.SUPABASE_KEY) {
     console.log("⚠️ Không tìm thấy file .env, đang nạp Key dự phòng...");
     
@@ -16,10 +14,6 @@ if (!process.env.SUPABASE_KEY) {
     process.env.CLOUDINARY_PRESET = "codepen_preset";
 }
 // -------------------------------------
-
-// Thêm thư viện fetch nếu dùng Node bản cũ, hoặc dùng fetch có sẵn từ Node 18+
-// ipcMain.handle('get-api-keys', ...) --> XÓA HÀM NÀY ĐI vì ta không gửi Key về Renderer nữa
-
 // 1. Handler gọi Supabase
 ipcMain.handle('supabase-request', async (event, { method, path, body }) => {
     const url = `${process.env.SUPABASE_URL}${path}`;
