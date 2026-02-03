@@ -32,19 +32,30 @@ ipcMain.handle('supabase-request', async (event, { method, path, body }) => {
 });
 
 // 2. Handler upload ảnh lên Cloudinary
+// 2. Handler upload ảnh lên Cloudinary
 ipcMain.handle('cloudinary-upload', async (event, base64Image) => {
-    const formData = new URLSearchParams();
-    formData.append("file", base64Image);
-    formData.append("upload_preset", process.env.CLOUDINARY_PRESET);
-
     try {
+        // Sử dụng FormData thay vì URLSearchParams
+        const formData = new FormData();
+        formData.append("file", base64Image); // Cloudinary chấp nhận chuỗi base64 có prefix data:image/...
+        formData.append("upload_preset", process.env.CLOUDINARY_PRESET);
+
         const response = await fetch(process.env.CLOUDINARY_URL, {
             method: "POST",
-            body: formData
+            body: formData // Fetch sẽ tự động set Content-Type là multipart/form-data
         });
+
         const data = await response.json();
-        return data.secure_url;
+
+        if (!response.ok) {
+            console.error("Cloudinary Error Details:", data);
+            return { error: data.error ? data.error.message : "Lỗi upload không xác định" };
+        }
+
+        console.log("Upload thành công:", data.secure_url);
+        return data.secure_url; // Trả về URL trực tiếp nếu thành công
     } catch (e) {
+        console.error("Lỗi kết nối Cloudinary:", e.message);
         return { error: e.message };
     }
 });

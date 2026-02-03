@@ -352,7 +352,17 @@ verifyUnlock() {
               alert("✅ Đã lưu vào bộ nhớ IndexedDB (Private)!");
           } else {
             let imageUrl = document.getElementById('image-preview-element').src;
-            if (CodePenStorage.selectedImageFile) imageUrl = await this.uploadToCloudinary();
+            if (this.selectedImageFile) {
+              const uploadResult = await this.uploadToCloudinary();
+              
+              // KIỂM TRA LỖI Ở ĐÂY
+              if (typeof uploadResult === 'object' && uploadResult.error) {
+                  alert("❌ Lỗi upload ảnh: " + uploadResult.error);
+                  activeButtons.forEach(btn => { btn.disabled = false; btn.style.opacity = '1'; });
+                  return; // Dừng lại không lưu vào Supabase nữa
+              }
+              imageUrl = uploadResult; // Nếu không lỗi thì mới lấy URL
+          }
         
             const isPatch = forceUpdate && CodePenStorage.currentEditId;
             const path = isPatch ? `/rest/v1/snippets?id=eq.${CodePenStorage.currentEditId}` : `/rest/v1/snippets`;
@@ -486,28 +496,48 @@ verifyUnlock() {
       const item = isLocal ? this.localSnippets.find(s => s.id === id) : this.currentSnippets.find(s => s.id === id);
       if (!item) return;
   
-      this.requestAccess(item, () => {
-          this.currentEditId = id; 
-          this.currentName = item.name; 
-          this.updateNameUI();
-          try {
-              const data = JSON.parse(LZString.decompressFromEncodedURIComponent(item.data));
-              CodePen.editors.html.setValue(data.html || "", -1);
-              CodePen.editors.css.setValue(data.css || "", -1);
-              CodePen.editors.js.setValue(data.js || "", -1);
-              CodePen.externalResources = data.resources || { css: [], js: [] };
-              CodePen.run();
+      if (!isLocal && item.access_mode === 'view') {
+          this.executeLoadSnippet(item); // Nạp code
+          this.setReadOnlyMode(true);    // Khóa Editor lại
+          this.closeLibraryUI();         // Đóng modal thư viện
+          return;
+      }
   
-              // CHỈ CẦN DÒNG NÀY: Mọi việc khóa Editor, hiện ổ khóa, ẩn nút Save
-              // đều đã được hàm setReadOnlyMode xử lý.
-              const isLocked = (!isLocal && item.access_mode === 'view');
-              this.setReadOnlyMode(isLocked);
+      if (!isLocal && item.password && item.password.trim() !== "") {
+          this.requestAccess(item, () => {
+              this.executeLoadSnippet(item);
+              this.setReadOnlyMode(false); 
+              this.closeLibraryUI();
+          });
+          return;
+      }
   
-              if (document.querySelector('.library-modal-overlay')) {
-                  document.querySelector('.library-modal-overlay').remove();
-              }
-          } catch (e) { alert("Lỗi giải nén dữ liệu!"); }
-      });
+      this.executeLoadSnippet(item);
+      this.setReadOnlyMode(false);
+      this.closeLibraryUI();
+    },
+    
+    // Hàm phụ 1: Thực thi việc đổ dữ liệu vào Editor và chạy Code
+    executeLoadSnippet(item) {
+      this.currentEditId = item.id; 
+      this.currentName = item.name; 
+      this.updateNameUI();
+      try {
+          const data = JSON.parse(LZString.decompressFromEncodedURIComponent(item.data));
+          CodePen.editors.html.setValue(data.html || "", -1);
+          CodePen.editors.css.setValue(data.css || "", -1);
+          CodePen.editors.js.setValue(data.js || "", -1);
+          CodePen.externalResources = data.resources || { css: [], js: [] };
+          CodePen.run();
+      } catch (e) {
+          alert("Lỗi giải nén dữ liệu!");
+      }
+  },
+
+  // Hàm phụ 2: Đóng modal thư viện
+  closeLibraryUI() {
+      const modal = document.querySelector('.library-modal-overlay');
+      if (modal) modal.remove();
   },
 
     editSnippet(id, event) {
@@ -529,30 +559,43 @@ verifyUnlock() {
     },
 
     async deleteSnippet(id, event) {
-        event.stopPropagation();
-        const isLocal = String(id).startsWith("local_");
-        const item = isLocal ? this.localSnippets.find(s => s.id === id) : this.currentSnippets.find(s => s.id === id);
-        this.requestAccess(item, async () => {
-            if (!confirm("Xóa vĩnh viễn snippet này?")) return;
-            if (isLocal) {
+      event.stopPropagation();
+      const isLocal = String(id).startsWith("local_");
+      const item = isLocal ? this.localSnippets.find(s => s.id === id) : this.currentSnippets.find(s => s.id === id);
+      
+      this.requestAccess(item, async () => {
+          if (!confirm("Xóa vĩnh viễn snippet này?")) return;
+
+          if (isLocal) {
+              // Xóa ở Local (IndexedDB) - Giữ nguyên vì không dùng Key
               const db = await this.getDB();
               const transaction = db.transaction([this.STORE_NAME], "readwrite");
               transaction.objectStore(this.STORE_NAME).delete(id);
-              transaction.oncomplete = () => this.loadLibrary(); // Load lại sau khi xóa xong
+              transaction.oncomplete = () => this.loadLibrary(); 
           } else {
-                await fetch(`${SUPABASE_URL}/rest/v1/snippets?id=eq.${id}`, { 
-                    method: 'DELETE', 
-                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } 
-                });
-            }
-            this.loadLibrary();
-        });
-    },
+              // --- SỬA ĐOẠN NÀY: Dùng Proxy thay vì fetch trực tiếp ---
+              try {
+                  const result = await ipcRenderer.invoke('supabase-request', {
+                      method: 'DELETE',
+                      path: `/rest/v1/snippets?id=eq.${id}`
+                  });
 
-    // --- PHỤ TRỢ ---
+                  if (result && result.error) {
+                      throw new Error(result.error);
+                  }
+                  
+                  alert("✅ Đã xóa snippet khỏi Cloud!");
+                  this.loadLibrary(); // Load lại danh sách sau khi xóa thành công
+              } catch (e) {
+                  console.error("Lỗi xóa Cloud:", e);
+                  alert("❌ Lỗi không thể xóa snippet trên Cloud!");
+              }
+          }
+      });
+  },
+
     async uploadToCloudinary() {
       if (!CodePenStorage.selectedImageFile) return null;
-      // Gửi thẳng Base64 cho Main Process xử lý
       return await ipcRenderer.invoke('cloudinary-upload', CodePenStorage.selectedImageFile);
   },
 
@@ -591,15 +634,13 @@ verifyUnlock() {
     }
 };
 
-// ĐỒNG BỘ TÊN REAL-TIME KHÔNG MẤT FOCUS
 document.addEventListener('input', (e) => {
     if (e.target.id === 'active-snippet-name' || e.target.id === 'snippet-name-input') {
         CodePenStorage.currentName = e.target.value;
-        CodePenStorage.updateNameUI(e.target.id); // Truyền ID để không cập nhật lại chính nó
+        CodePenStorage.updateNameUI(e.target.id); 
     }
 });
 
-// CÁC HÀM CỦA CODEPEN (BỔ SUNG ĐỒNG BỘ TÊN)
 window.runCode = () => CodePen.run();
 window.clearCode = () => {
     if (confirm("Clear?")) {
@@ -608,13 +649,6 @@ window.clearCode = () => {
     }
 };
 
-// // ĐỒNG BỘ TÊN REAL-TIME
-// document.addEventListener('input', (e) => {
-//     if (e.target.id === 'active-snippet-name' || e.target.id === 'snippet-name-input') {
-//         CodePenStorage.currentName = e.target.value;
-//         CodePenStorage.updateNameUI();
-//     }
-// });
 
 const CodePen = {
   isDraggingV: false,
@@ -917,7 +951,6 @@ const CodePen = {
   },
 
   toggleViewMode() {
-    // 1. Lấy dữ liệu mới nhất trực tiếp từ các Editor hiện tại (trước khi UI bị xóa)
     const currentData = {
       html: this.editors.html ? this.editors.html.getValue() : "",
       css: this.editors.css ? this.editors.css.getValue() : "",
@@ -925,20 +958,11 @@ const CodePen = {
       resources: this.externalResources
     };
 
-    // 2. Chuyển đổi chế độ
     this.viewMode = this.viewMode === "standard" ? "split" : "standard";
-
-    // 3. Vẽ lại giao diện (Lưu ý: render() sẽ xóa các object editor cũ)
     this.render();
-
-    // 4. Khởi tạo lại Ace Editor với dữ liệu vừa lấy được (Đảm bảo đồng bộ 100%)
     this.initAce(currentData);
-
-    // 5. Chạy lại code ngay lập tức để đồng bộ Preview
     this.run();
-    
-    // 6. Áp dụng lại trạng thái Khóa nếu Snippet đang ở mode View
-    CodePenStorage.setReadOnlyMode(CodePenStorage.isLocked);
+        CodePenStorage.setReadOnlyMode(CodePenStorage.isLocked);
   },
 
   switchTab(tab, btn) {
@@ -966,7 +990,6 @@ const CodePen = {
         if (e.key === "Enter" && input.value) {
           const cmd = input.value;
           this.appendLog("info", [`> ${cmd}`]);
-          // FIX: Đảm bảo type gửi đi khớp với listener trong Iframe
           document
             .getElementById("preview-window")
             .contentWindow.postMessage(
@@ -1032,10 +1055,7 @@ const CodePen = {
     if (!logContainer) return;
     const logItem = document.createElement("div");
     
-    // NÂNG CẤP: Thêm class dựa trên loại log
     logItem.className = `log-item log-${method}`; 
-    
-    // Thêm icon nhỏ phía trước để phân biệt
     let prefix = "";
     if (method === 'error') prefix = "❌ ";
     if (method === 'warn') prefix = "⚠️ ";
@@ -1102,7 +1122,6 @@ const CodePen = {
               if (multiplier > 0) {
                   const rowHeight = lineHeight * multiplier;
                   
-                  // --- FIX CRASH: Kiểm tra hàm tồn tại ---
                   let foldBtn = "";
                   if (typeof session.getFoldWidget === "function") {
                       const foldWidget = session.getFoldWidget(i);
