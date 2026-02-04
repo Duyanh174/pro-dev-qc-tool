@@ -1,37 +1,42 @@
 ::-webkit-scrollbar {
-    width: 6px;  /* Độ rộng thanh dọc - rất mỏng */
-    height: 6px; /* Độ cao thanh ngang */
+    width: 6px; 
+    height: 6px; 
 }
 
-/* Phần nền của thanh cuộn - để trong suốt để tạo hiệu ứng 'slide' lơ lửng */
 ::-webkit-scrollbar-track {
     background: transparent; 
 }
 
-/* Phần thanh trượt (Thumb) */
 ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1); /* Mặc định rất mờ */
+    background: rgba(255, 255, 255, 0.1); 
     border-radius: 10px;
     transition: background 0.3s;
 }
 
-/* Hiện rõ hơn khi di chuột vào vùng chứa hoặc khi hover trực tiếp */
 .editor-box:hover ::-webkit-scrollbar-thumb,
 .preview-content-wrapper:hover ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.25);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #007acc !important; /* Màu nhấn khi đang kéo */
+    background: #007acc !important;
 }
 
-/* 2. Tùy chỉnh cho Firefox */
 * {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
-/* --- ĐIỀU CHỈNH LẠI CÁC PHẦN LIÊN QUAN --- */
+#drag-blocker { 
+    display: none; 
+    position: absolute; 
+    inset: 0; 
+    z-index: 99999; 
+    background: transparent; 
+}
+
+
+/* ------- Main Layout Containers (Khung bao ngoài) ------- */
 
 .codepen-wrapper {
     position: relative;
@@ -48,6 +53,149 @@
     height: 100%;
 }
 
+/* ------- Header Actions & UI Controls (Thanh công cụ & Nút bấm) ------- */
+
+.codepen-container-main .preview-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 0 15px;
+    background: #1e1e1e;
+    border-bottom: 1px solid #333;
+    height: 45px;
+    flex-shrink: 0;
+    z-index: 1000;
+}
+
+.codepen-container-main .preview-actions .brand-name {
+    color: #007acc;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 1px;
+    margin-right: 10px;
+    user-select: none;
+}
+
+.codepen-container-main .preview-actions .theme-select {
+    background: #2d2d2d;
+    color: #ccc;
+    border: 1px solid #444;
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.codepen-container-main .preview-actions .theme-select:hover {
+    border-color: #007acc;
+}
+
+.codepen-container-main .preview-actions .theme-select option {
+    background: #1e1e1e;
+    color: #ccc;
+}
+
+.codepen-container-main .preview-actions .action-btn {
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    text-transform: uppercase;
+}
+
+.codepen-container-main .preview-actions .btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.codepen-container-main .preview-actions .btn-secondary {
+    background: #3e3e3e;
+    color: #ddd;
+}
+
+.codepen-container-main .preview-actions .action-btn:hover {
+    opacity: 0.85;
+}
+
+.codepen-container-main .preview-actions .action-btn:active {
+    transform: scale(0.96);
+}
+
+.codepen-container-main .preview-actions .toggle-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.codepen-container-main .preview-actions .toggle-control .label {
+    font-size: 11px;
+    color: #858585;
+    font-weight: 600;
+}
+
+.toggle-control { display: flex; align-items: center; cursor: pointer; user-select: none; margin-left: 5px; }
+.toggle-control input { display: none; }
+.toggle-control .control {
+    width: 36px; height: 20px; background-color: #ddd; border-radius: 20px;
+    position: relative; transition: background-color 0.2s; margin-right: 8px;
+}
+.toggle-control .control::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+    background-color: white; border-radius: 50%; transition: transform 0.2s;
+}
+.toggle-control input:checked + .control { background-color: #007acc; }
+.toggle-control input:checked + .control::after { transform: translateX(16px); }
+.toggle-control .label { font-size: 13px; color: #333; font-weight: 600; }
+
+.format-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: #aaa;
+    border: 1px solid #444;
+    padding: 2px 8px;
+    font-size: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+}
+
+.format-btn:hover {
+    background: #007acc;
+    color: white;
+    border-color: #007acc;
+}
+
+#active-snippet-name {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #007acc;
+    font-weight: 800;
+    font-size: 14px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    outline: none;
+    width: fit-content;
+    transition: all 0.2s;
+    text-overflow: ellipsis;
+}
+
+#active-snippet-name:hover, #active-snippet-name:focus {
+    background: #252526;
+    border-color: #444;
+    color: #fff;
+}
+
+/* ------- Editor Section (Khu vực soạn thảo & Ace Editor) ------- */
+
 .editor-section-bg {
     display: flex;
     position: absolute;
@@ -55,6 +203,12 @@
     padding: 10px;
     gap: 0;
     background: #121212;
+}
+
+.codepen-container-main .editor-section-bg {
+    position: relative;
+    top: 0;
+    height: calc(100% - 45px);
 }
 
 .editor-box {
@@ -80,6 +234,20 @@
     flex-shrink: 0;
 }
 
+.editor-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #252526;
+    color: #858585;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: bold;
+    border-bottom: 1px solid #333;
+    user-select: none;
+    flex-shrink: 0;
+}
+
 .editor-content-wrapper {
     display: flex;
     flex: 1;
@@ -87,7 +255,6 @@
     overflow: auto;
 }
 
-/* Custom Line Numbers */
 .custom-line-numbers {
     width: 40px;
     background: #1e1e1e;
@@ -103,7 +270,6 @@
     box-sizing: border-box;
 }
 
-/* Div con bên trong gutter sẽ có chiều cao linh hoạt */
 .custom-line-numbers div {
     display: block;
 }
@@ -114,26 +280,67 @@
     background: transparent;
 }
 
-/* Custom Scrollbar */
+.ace_editor { border: none !important; background: transparent !important; }
+
 .ace-editor-container::-webkit-scrollbar { width: 10px; height: 10px; }
 .ace-editor-container::-webkit-scrollbar-track { background: #1e1e1e; }
 .ace-editor-container::-webkit-scrollbar-thumb { background: #3e3e3e; border-radius: 5px; }
 
-/* Preview Slider (Giữ nguyên logic của bạn) */
-.preview-sliding-overlay {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 100%;
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    background: #ffffff;
-    box-shadow: 0 -15px 50px rgba(0,0,0,0.6);
-    border-radius: 20px 20px 0 0;
-    will-change: transform; 
-    transform: translateY(45vh);
+.codepen-container-main .ace_cursor {
     transition: none !important;
 }
+
+/* ------- Split View Mode (Chế độ xem chia màn hình) ------- */
+
+.codepen-container-main.mode-split .split-layout-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    background: #121212;
+    position: relative;
+    height: calc(100% - 45px);
+}
+
+.split-editor-side {
+    display: flex;
+    flex-direction: column;
+    background: #1e1e1e;
+    overflow: hidden;
+}
+
+.split-tabs-header {
+    display: flex;
+    background: #252526;
+    padding: 5px 10px 0;
+    gap: 5px;
+    border-bottom: 1px solid #333;
+}
+
+.tab-btn-codepen-codepen {
+    background: #2d2d2d;
+    color: #858585;
+    border: none;
+    padding: 8px 15px;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+    text-transform: uppercase;
+}
+.tab-btn-codepen-codepen.active { background: #1e1e1e; color: #007acc; font-weight: bold; }
+
+.split-editor-container { flex: 1; position: relative; }
+.split-editor-container .editor-box {
+    position: absolute; inset: 0; display: none; border: none; border-radius: 0;
+}
+.split-editor-container .editor-box.active { display: flex; }
+
+.split-preview-side {
+    display: flex; flex-direction: column; flex: 1; overflow: hidden; background: #fff;
+}
+.split-preview-side .preview-frame-container { flex: 1; border: none; border-radius: 0; }
+.split-preview-side .console-panel { display: flex; height: 180px; }
+
+/* ------- Resizers & Dragging (Thanh kéo giãn) ------- */
 
 .resizer-v-handle {
     height: 24px;
@@ -169,6 +376,11 @@
 }
 .resizer-h:hover::after { background: #007acc; }
 
+.main-split-resizer {
+    width: 6px; cursor: col-resize; background: #121212; z-index: 50; transition: background 0.2s;
+}
+.main-split-resizer:hover { background: #007acc; }
+
 .handle-line { width: 50px; height: 5px; background: rgba(255,255,255,0.2); border-radius: 3px; }
 
 .is-dragging-global * {
@@ -176,179 +388,53 @@
     cursor: grabbing !important;
 }
 
+/* ------- Preview Section (Khu vực xem trước & Iframe) ------- */
+
+.preview-sliding-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 100%;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    box-shadow: 0 -15px 50px rgba(0,0,0,0.6);
+    border-radius: 20px 20px 0 0;
+    will-change: transform; 
+    transform: translateY(45vh);
+    transition: none !important;
+}
+
 .preview-content-wrapper { flex: 1; display: flex; flex-direction: column; padding: 10px; overflow: hidden; }
 .preview-actions { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
 .preview-frame-container { flex: 1; position: relative; background: white; border-radius: 8px; border: 1px solid #ddd; overflow: hidden; }
 
-#drag-blocker { display: none; position: absolute; inset: 0; z-index: 99999; background: transparent; }
 #preview-window { width: 100%; height: 100%; border: none; }
 
-.toggle-control { display: flex; align-items: center; cursor: pointer; user-select: none; margin-left: 5px; }
-.toggle-control input { display: none; }
-.toggle-control .control {
-    width: 36px; height: 20px; background-color: #ddd; border-radius: 20px;
-    position: relative; transition: background-color 0.2s; margin-right: 8px;
-}
-.toggle-control .control::after {
-    content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
-    background-color: white; border-radius: 50%; transition: transform 0.2s;
-}
-.toggle-control input:checked + .control { background-color: #007acc; }
-.toggle-control input:checked + .control::after { transform: translateX(16px); }
-.toggle-control .label { font-size: 13px; color: #333; font-weight: 600; }
-
-.ace_editor { border: none !important; background: transparent !important; }
-
-/* Thêm vào codepen.css của bạn */
-
-.editor-label {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #252526;
-    color: #858585;
-    padding: 4px 10px;
-    font-size: 11px;
-    font-weight: bold;
-    border-bottom: 1px solid #333;
-    user-select: none;
-    flex-shrink: 0;
+#capture-overlay {
+    display: none;
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    cursor: crosshair;
 }
 
-.format-btn {
-    background: rgba(255, 255, 255, 0.05);
-    color: #aaa;
-    border: 1px solid #444;
-    padding: 2px 8px;
-    font-size: 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-transform: uppercase;
+#selection-box {
+    border: 2px dashed #007acc;
+    background: rgba(0, 122, 204, 0.1);
+    position: absolute;
 }
 
-.format-btn:hover {
-    background: #007acc;
-    color: white;
-    border-color: #007acc;
-}
+/* ------- Console Panel (Bảng điều khiển Log) ------- */
 
-
-/* Scope CSS chỉ ảnh hưởng bên trong codepen-container-main */
-.codepen-container-main .preview-actions {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 0 15px;
-    background: #1e1e1e; /* Màu nền header tối */
-    border-bottom: 1px solid #333;
-    height: 45px;
-    flex-shrink: 0;
-    z-index: 1000;
-}
-
-/* Tên thương hiệu/Logo */
-.codepen-container-main .preview-actions .brand-name {
-    color: #007acc;
-    font-weight: 800;
-    font-size: 13px;
-    letter-spacing: 1px;
-    margin-right: 10px;
-    user-select: none;
-}
-
-/* Dropdown chọn Theme */
-.codepen-container-main .preview-actions .theme-select {
-    background: #2d2d2d;
-    color: #ccc;
-    border: 1px solid #444;
-    padding: 4px 10px;
-    font-size: 12px;
-    border-radius: 4px;
-    outline: none;
-    cursor: pointer;
-    transition: border-color 0.2s;
-}
-
-.codepen-container-main .preview-actions .theme-select:hover {
-    border-color: #007acc;
-}
-
-.codepen-container-main .preview-actions .theme-select option {
-    background: #1e1e1e;
-    color: #ccc;
-}
-
-/* Nút bấm trong header */
-.codepen-container-main .preview-actions .action-btn {
-    border: none;
-    padding: 6px 14px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    text-transform: uppercase;
-}
-
-.codepen-container-main .preview-actions .btn-success {
-    background: #28a745;
-    color: white;
-}
-
-.codepen-container-main .preview-actions .btn-secondary {
-    background: #3e3e3e;
-    color: #ddd;
-}
-
-.codepen-container-main .preview-actions .action-btn:hover {
-    opacity: 0.85;
-}
-
-.codepen-container-main .preview-actions .action-btn:active {
-    transform: scale(0.96);
-}
-
-/* Toggle Control trong header */
-.codepen-container-main .preview-actions .toggle-control {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-}
-
-.codepen-container-main .preview-actions .toggle-control .label {
-    font-size: 11px;
-    color: #858585;
-    font-weight: 600;
-}
-
-/* Điều chỉnh lại vị trí Editor Section để không bị Header đè */
-.codepen-container-main .editor-section-bg {
-    position: relative;
-    top: 0;
-    height: calc(100% - 45px); /* Trừ đi chiều cao header */
-}
-
-/* Triệt tiêu hoàn toàn hiệu ứng trượt của con trỏ Ace Editor */
-.codepen-container-main .ace_cursor {
-    transition: none !important;
-}
-
-
-
-
-/* --- CONSOLE PANEL STYLES --- */
 .codepen-container-main .console-panel {
-    display: none; /* Mặc định ẩn */
+    display: none; 
     flex-direction: column;
     background: #1e1e1e;
     border-top: 1px solid #333;
     position: relative;
-    min-height: 35px; /* Chiều cao tối thiểu của thanh Tab */
+    min-height: 35px; 
     transition: background 0.3s;
 }
 
@@ -430,7 +516,144 @@
     font-size: 12px;
 }
 
-/* --- CDN MODAL STYLES --- */
+.codepen-container-main.mode-split .console-input-area{
+    padding: 5px 10px 20px 10px
+}
+
+/* ------- Library Modal (Thư viện Snippets) ------- */
+
+.library-modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8); z-index: 2000;
+    display: flex; justify-content: center; align-items: center;
+}
+
+.library-modal {
+    width: 400px; background: #1e1e1e; border: 1px solid #333;
+    border-radius: 12px; padding: 20px; color: white;
+}
+
+.library-list {
+    max-height: 300px; overflow-y: auto; margin: 15px 0;
+}
+
+.library-item {
+    padding: 12px; background: #252526; margin-bottom: 8px;
+    border-radius: 6px; cursor: pointer; display: flex;
+    justify-content: space-between; align-items: center;
+    transition: background 0.2s;
+}
+
+.library-item:hover {
+    background: #007acc;
+}
+
+.library-item small { color: #858585; font-size: 10px; }
+.library-item:hover small { color: #eee; }
+
+.library-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #252526;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.library-item {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.library-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.library-item-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.delete-btn-codepen {
+    color: #f48771;
+    font-size: 16px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.delete-btn-codepen:hover {
+    background: rgba(244, 135, 113, 0.2);
+    transform: scale(1.2);
+}
+
+.snippet-thumb {
+    width: 80px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 4px;
+    background: #000;
+}
+
+.edit-btn {
+    color: #007acc;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 5px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.edit-btn:hover {
+    background: rgba(0, 122, 204, 0.2);
+}
+
+.author-tag {
+    font-size: 10px; background: #333; padding: 2px 6px;
+    border-radius: 4px; color: #007acc; margin-top: 4px; display: inline-block;
+}
+
+.author-tag {
+    font-size: 10px; background: #333; padding: 1px 6px;
+    border-radius: 4px; color: #aaa; margin-top: 4px; display: inline-block;
+}
+
+.library-tabs {
+    display: flex; border-bottom: 1px solid #333; margin-bottom: 15px;
+}
+
+.lib-tab {
+    padding: 10px 20px; cursor: pointer; color: #666; font-size: 12px;
+}
+
+.lib-tab.active {
+    color: white; border-bottom: 2px solid #007acc; background: rgba(255,255,255,0.05);
+}
+
+.library-search-filter {
+    display: flex; gap: 10px; margin-bottom: 15px; padding: 0 5px;
+}
+
+.lib-search-input {
+    flex: 1; padding: 8px 12px; background: #252526; border: 1px solid #333;
+    color: white; border-radius: 4px; font-size: 12px; outline: none;
+}
+
+.lib-search-input:focus { border-color: #007acc; }
+
+.lib-sort-select {
+    padding: 8px; background: #252526; border: 1px solid #333;
+    color: white; border-radius: 4px; font-size: 12px; cursor: pointer; outline: none;
+}
+
+/* ------- CDN Modal Styles (Thêm thư viện ngoài) ------- */
+
 .cdn-modal-overlay {
     display: none;
     position: fixed;
@@ -507,106 +730,15 @@
     font-weight: bold;
 }
 
+/* ------- Save Modal & Asset Storage (Lưu trữ & Hình ảnh) ------- */
 
-/* --- SPLIT VIEW MODE STYLES --- */
-.codepen-container-main.mode-split .split-layout-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-    background: #121212;
-    position: relative;
-    height: calc(100% - 45px); /* Trừ header */
-}
-
-/* Cột trái */
-.split-editor-side {
-    display: flex;
-    flex-direction: column;
-    background: #1e1e1e;
-    overflow: hidden;
-}
-
-.split-tabs-header {
-    display: flex;
-    background: #252526;
-    padding: 5px 10px 0;
-    gap: 5px;
-    border-bottom: 1px solid #333;
-}
-
-.tab-btn-codepen-codepen {
-    background: #2d2d2d;
-    color: #858585;
-    border: none;
-    padding: 8px 15px;
-    font-size: 11px;
-    cursor: pointer;
-    border-radius: 4px 4px 0 0;
-    text-transform: uppercase;
-}
-.tab-btn-codepen-codepen.active { background: #1e1e1e; color: #007acc; font-weight: bold; }
-
-.split-editor-container { flex: 1; position: relative; }
-.split-editor-container .editor-box {
-    position: absolute; inset: 0; display: none; border: none; border-radius: 0;
-}
-.split-editor-container .editor-box.active { display: flex; }
-
-/* Resizer chính */
-.main-split-resizer {
-    width: 6px; cursor: col-resize; background: #121212; z-index: 50; transition: background 0.2s;
-}
-.main-split-resizer:hover { background: #007acc; }
-
-/* Cột phải */
-.split-preview-side {
-    display: flex; flex-direction: column; flex: 1; overflow: hidden; background: #fff;
-}
-.split-preview-side .preview-frame-container { flex: 1; border: none; border-radius: 0; }
-.split-preview-side .console-panel { display: flex; height: 180px; }
-
-.codepen-container-main.mode-split .console-input-area{
-    padding: 5px 10px 20px 10px
-}
-
-
-.library-modal-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.8); z-index: 2000;
-    display: flex; justify-content: center; align-items: center;
-}
-
-.library-modal {
-    width: 400px; background: #1e1e1e; border: 1px solid #333;
-    border-radius: 12px; padding: 20px; color: white;
-}
-
-.library-list {
-    max-height: 300px; overflow-y: auto; margin: 15px 0;
-}
-
-.library-item {
-    padding: 12px; background: #252526; margin-bottom: 8px;
-    border-radius: 6px; cursor: pointer; display: flex;
-    justify-content: space-between; align-items: center;
-    transition: background 0.2s;
-}
-
-.library-item:hover {
-    background: #007acc;
-}
-
-.library-item small { color: #858585; font-size: 10px; }
-.library-item:hover small { color: #eee; }
-
-/* --- SAVE MODAL STYLES --- */
 .save-data-wrap{
-       justify-content: flex-end;
-       gap: 10px;
-       position: absolute;
-       right: 10px;
-       bottom: 10px;
-       z-index: 9999;
+    justify-content: flex-end;
+    gap: 10px;
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    z-index: 9999;
 }
 
 .save-data-wrap .action-btn.btn-secondary{
@@ -615,7 +747,7 @@
 }
 
 .save-modal-overlay {
-    display: none; /* Mặc định ẩn */
+    display: none; 
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.8); z-index: 3000;
     justify-content: center; align-items: center;
@@ -637,38 +769,6 @@
 
 .save-modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
 
-.library-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background: #252526;
-    margin-bottom: 8px;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-.library-item-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.delete-btn-codepen {
-    color: #f48771;
-    font-size: 16px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.delete-btn-codepen:hover {
-    background: rgba(244, 135, 113, 0.2);
-    transform: scale(1.2);
-}
-
-
-/* Giao diện chọn ảnh trong Save Modal */
 .image-upload-section {
     margin-bottom: 20px;
     border: 1px dashed #444;
@@ -693,114 +793,6 @@
     margin-top: 5px;
 }
 
-/* Thumbnail trong Library */
-.library-item {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-}
-
-.snippet-thumb {
-    width: 80px;
-    height: 50px;
-    object-fit: cover;
-    border-radius: 4px;
-    background: #000;
-}
-
-/* --- CAPTURE REGION OVERLAY --- */
-#capture-overlay {
-    display: none;
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.3);
-    z-index: 10000;
-    cursor: crosshair;
-}
-
-#selection-box {
-    border: 2px dashed #007acc;
-    background: rgba(0, 122, 204, 0.1);
-    position: absolute;
-}
-
-/* --- EDIT ACTIONS IN LIBRARY --- */
-.edit-btn {
-    color: #007acc;
-    cursor: pointer;
-    font-size: 14px;
-    padding: 5px;
-    border-radius: 4px;
-    transition: background 0.2s;
-}
-
-.edit-btn:hover {
-    background: rgba(0, 122, 204, 0.2);
-}
-
-.library-item-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-/* Tên Snippet trên Header */
-#active-snippet-name {
-    background: transparent;
-    border: 1px solid transparent;
-    color: #007acc;
-    font-weight: 800;
-    font-size: 14px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    outline: none;
-    width: fit-content;
-    transition: all 0.2s;
-    text-overflow: ellipsis;
-}
-
-#active-snippet-name:hover, #active-snippet-name:focus {
-    background: #252526;
-    border-color: #444;
-    color: #fff;
-}
-
-/* Badge tên tác giả */
-.author-tag {
-    font-size: 10px; background: #333; padding: 2px 6px;
-    border-radius: 4px; color: #007acc; margin-top: 4px; display: inline-block;
-}
-/* Icon khóa */
-.lock-icon { color: #ffca28; margin-left: 5px; font-size: 12px; }
-/* Nút quên pass */
-.forgot-pass-btn {
-    display: block; font-size: 10px; color: #555; cursor: pointer;
-    text-align: right; margin-top: 8px; text-decoration: underline;
-}
-/* Modal xác thực mật khẩu */
-.auth-modal-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
-    z-index: 100000; align-items: center; justify-content: center;
-}
-.auth-modal {
-    background: #1e1e1e; padding: 20px; border-radius: 8px; width: 300px;
-    border: 1px solid #333; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-}
-
-/* Ẩn hiện linh hoạt cho khu vực mật khẩu */
-#password-wrapper { display: block; }
-#change-pass-btn { 
-    display: none; font-size: 11px; color: #007acc; 
-    cursor: pointer; padding: 5px; border: 1px solid #333; 
-    border-radius: 4px; text-align: center;
-}
-.author-tag {
-    font-size: 10px; background: #333; padding: 1px 6px;
-    border-radius: 4px; color: #aaa; margin-top: 4px; display: inline-block;
-}
-.lock-icon { color: #ffca28; margin-left: 5px; }
-
-/* Style cho nút chuyển đổi Mode */
 .mode-switch-container {
     display: flex; gap: 5px; margin-bottom: 15px;
     background: #1a1a1a; padding: 4px; border-radius: 6px;
@@ -814,38 +806,48 @@
 .mode-btn.cloud.active { color: #28a745; box-shadow: 0 0 10px rgba(40, 167, 69, 0.2); }
 .mode-btn.local.active { color: #007acc; box-shadow: 0 0 10px rgba(0, 122, 204, 0.2); }
 
-/* Library Tabs */
-.library-tabs {
-    display: flex; border-bottom: 1px solid #333; margin-bottom: 15px;
-}
-.lib-tab {
-    padding: 10px 20px; cursor: pointer; color: #666; font-size: 12px;
-}
-.lib-tab.active {
-    color: white; border-bottom: 2px solid #007acc; background: rgba(255,255,255,0.05);
+/* ------- Security & Lock UI (Bảo mật & Trạng thái Khóa) ------- */
+
+.lock-icon { color: #ffca28; margin-left: 5px; font-size: 12px; }
+.lock-icon { color: #ffca28; margin-left: 5px; }
+
+.forgot-pass-btn {
+    display: block; font-size: 10px; color: #555; cursor: pointer;
+    text-align: right; margin-top: 8px; text-decoration: underline;
 }
 
-/* Library Search & Filter Area */
-.library-search-filter {
-    display: flex; gap: 10px; margin-bottom: 15px; padding: 0 5px;
+.auth-modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    z-index: 100000; align-items: center; justify-content: center;
 }
-.lib-search-input {
-    flex: 1; padding: 8px 12px; background: #252526; border: 1px solid #333;
-    color: white; border-radius: 4px; font-size: 12px; outline: none;
+
+.auth-modal {
+    background: #1e1e1e; padding: 20px; border-radius: 8px; width: 300px;
+    border: 1px solid #333; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
 }
-.lib-search-input:focus { border-color: #007acc; }
-.lib-sort-select {
-    padding: 8px; background: #252526; border: 1px solid #333;
-    color: white; border-radius: 4px; font-size: 12px; cursor: pointer; outline: none;
+
+#password-wrapper { display: block; }
+
+#change-pass-btn { 
+    display: none; font-size: 11px; color: #007acc; 
+    cursor: pointer; padding: 5px; border: 1px solid #333; 
+    border-radius: 4px; text-align: center;
+}
+
+#lock-overlay{
+    position: absolute;
+    inset: 0px;
+    background: transparent;
+    z-index: 99;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    pointer-events: none;
 }
 
 .lock-overlay-wrap{
-    /* position: absolute;
-    top: 50px;
-    display: flex;
-    flex-direction: column;
-    align-items: center; */
-
     position: absolute;
     top: 6px;
     right: 470px;
@@ -861,18 +863,4 @@
     border: none;
     padding: 7px 16px;
     font-size: 11px;
-}
-
-#lock-overlay{
-    position: absolute;
-    inset: 0px;
-    background: transparent;
-    z-index: 99;
-    /* backdrop-filter: blur(2px); */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    pointer-events: none;
 }

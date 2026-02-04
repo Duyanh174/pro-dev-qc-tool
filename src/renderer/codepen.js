@@ -1445,6 +1445,56 @@ const CodePen = {
     }, 200);
   },
 
+  // --- NÂNG CẤP: HÀM FORMAT CHUẨN PRETTIER ---
+  formatCode(type) {
+    const editor = this.editors[type];
+    if (!editor) return;
+
+    const rawCode = editor.getValue();
+    if (!rawCode.trim()) return;
+
+    const options = {
+      indent_size: 2,
+      indent_char: " ",
+      max_preserve_newlines: 2,
+      preserve_newlines: true,
+      keep_array_indentation: false,
+      break_chained_methods: false,
+      indent_scripts: "normal",
+      brace_style: "collapse",
+      space_before_conditional: true,
+      unescape_strings: false,
+      jslint_happy: false,
+      end_with_newline: false,
+      wrap_line_length: 0,
+      indent_inner_html: false,
+      comma_first: false,
+      e4x: false,
+      indent_empty_lines: false
+    };
+
+    let formatted = "";
+
+    try {
+      if (type === 'html') {
+        formatted = html_beautify(rawCode, options);
+      } else if (type === 'css') {
+        formatted = css_beautify(rawCode, options);
+      } else if (type === 'js') {
+        formatted = js_beautify(rawCode, options);
+      }
+
+      const cursor = editor.getCursorPosition();
+      editor.setValue(formatted, -1);
+      editor.moveCursorToPosition(cursor);
+      
+      console.log(`✅ Đã format ${type.toUpperCase()} thành công!`);
+    } catch (err) {
+      console.error("Lỗi Format:", err);
+      alert("Không thể format mã này, hãy kiểm tra lỗi cú pháp!");
+    }
+  },
+
   // --- CHỖ CẦN SỬA: Hàm bảo vệ thông minh hơn ---
   protectJS(code, timeoutLimit) {
     const timeoutMs = (timeoutLimit || 5) * 1000;
