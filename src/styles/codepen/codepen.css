@@ -156,6 +156,10 @@
 .toggle-control input:checked + .control::after { transform: translateX(16px); }
 .toggle-control .label { font-size: 13px; color: #333; font-weight: 600; }
 
+.toggle-control .label{
+    margin-bottom: 0px;
+}
+
 .format-btn {
     background: rgba(255, 255, 255, 0.05);
     color: #aaa;
@@ -289,7 +293,10 @@
 .codepen-container-main .ace_cursor {
     transition: none !important;
 }
-
+.editor-box {
+    min-width: 100px; /* Khớp với giá trị MIN_WIDTH trong JS */
+    overflow: hidden;
+}
 /* ------- Split View Mode (Chế độ xem chia màn hình) ------- */
 
 .codepen-container-main.mode-split .split-layout-body {
@@ -343,7 +350,7 @@
 /* ------- Resizers & Dragging (Thanh kéo giãn) ------- */
 
 .resizer-v-handle {
-    height: 24px;
+    height: 12px;
     background: #2d2d2d;
     cursor: row-resize;
     display: flex;
@@ -405,9 +412,29 @@
     transition: none !important;
 }
 
-.preview-content-wrapper { flex: 1; display: flex; flex-direction: column; padding: 10px; overflow: hidden; }
-.preview-actions { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
-.preview-frame-container { flex: 1; position: relative; background: white; border-radius: 8px; border: 1px solid #ddd; overflow: hidden; }
+.preview-content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    /* padding: 10px; */
+    overflow: hidden;
+}
+
+.preview-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.preview-frame-container {
+    flex: 1;
+    position: relative;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    overflow: hidden;
+}
 
 #preview-window { width: 100%; height: 100%; border: none; }
 
@@ -762,12 +789,33 @@
 .save-modal h3 { margin: 0 0 15px 0; font-size: 16px; color: #007acc; }
 
 .save-modal input {
-    width: 100%; background: #2d2d2d; border: 1px solid #444;
-    color: #fff; padding: 10px; border-radius: 4px;
-    margin-bottom: 20px; outline: none; box-sizing: border-box;
+    width: 100%;
+    background: #2d2d2d;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    outline: none;
+    box-sizing: border-box;
 }
 
-.save-modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.save-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.save-modal-actions .action-btn{
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.save-modal-actions .action-btn.btn-primary{
+   margin-top: 0px;
+}
 
 .image-upload-section {
     margin-bottom: 20px;
@@ -863,4 +911,53 @@
     border: none;
     padding: 7px 16px;
     font-size: 11px;
+}
+
+/* Nhãn hiển thị chế độ truy cập */
+.access-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 5px;
+    text-transform: uppercase;
+    font-weight: bold;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Màu cam cho chế độ Chỉ xem */
+.badge-view {
+    background-color: #ff980022;
+    color: #ff9800;
+    border: 1px solid #ff980055;
+}
+
+/* Màu xanh lá cho chế độ Cho phép sửa */
+.badge-edit {
+    background-color: #28a74522;
+    color: #28a745;
+    border: 1px solid #28a74555;
+}
+
+/* Hiệu ứng rung khung */
+@keyframes shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20%,
+    60% {
+        transform: translateX(-10px);
+    }
+
+    40%,
+    80% {
+        transform: translateX(10px);
+    }
+}
+
+.shake-error {
+    animation: shake 0.4s ease-in-out;
+    border: 1px solid #ff4d4d !important;
 }
