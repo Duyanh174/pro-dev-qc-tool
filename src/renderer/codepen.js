@@ -1449,39 +1449,42 @@ const CodePen = {
   protectJS(code, timeoutLimit) {
     const timeoutMs = (timeoutLimit || 5) * 1000;
     
-    // Khởi tạo context bảo vệ
     const helper = `
       window._loopContext = { startTime: Date.now(), iterationCount: 0, timeoutLimit: ${timeoutMs} };
       window._checkLoop = function() {
         window._loopContext.iterationCount++;
-        if (window._loopContext.iterationCount % 100 === 0) { // Kiểm tra dày hơn (mỗi 100 lần)
+        if (window._loopContext.iterationCount % 100 === 0) {
           if (Date.now() - window._loopContext.startTime > window._loopContext.timeoutLimit) {
-            const msg = "⚠️ PHÁT HIỆN TREO MÁY: Code chạy quá " + (window._loopContext.timeoutLimit/1000) + " giây.\\n\\nBấm OK để chạy tiếp.\\nBấm Cancel để DỪNG code.";
+            const msg = "⚠️ CẢNH BÁO: Code chạy quá lâu hoặc lỗi vòng lặp!\\n\\nBấm OK để tiếp tục.\\nBấm Cancel để DỪNG.";
             if (window.confirm(msg)) {
                 window._loopContext.startTime = Date.now();
             } else {
-                throw new Error("DỪNG VÒNG LẶP VÔ TẬN");
+                throw new Error("DỪNG CODE");
             }
           }
         }
       };
     `;
 
-  
-    let protectedCode = code;
-    
-    // Bắt các vòng lặp: for, while, do...while
-    const loopRegex = /\b(for|while|do)\b\s*(\(.*\))?\s*\{?/g;
-    
-    protectedCode = protectedCode.replace(loopRegex, (match) => {
-        if (match.trim().endsWith('{')) {
-            return `${match} _checkLoop();`;
-        }
-        // Nếu vòng lặp không có dấu {, ta phải bọc nó lại (phức tạp hơn)
-        return `${match} { _checkLoop(); `; 
+    let processedCode = code;
+
+    const strings = [];
+    processedCode = processedCode.replace(/(["'`])(?:(?=(\\?))\2.)*?\1/g, (match) => {
+        strings.push(match);
+        return `__STR_${strings.length - 1}__`;
     });
 
-    return helper + protectedCode;
+    const loopRegex = /\b(for|while|do)\b\s*(\(.*\))?\s*\{/g;
+    processedCode = processedCode.replace(loopRegex, (match) => `${match} _checkLoop();`);
+
+    const funcRegex = /((\bfunction\b\s*[\w$]*\s*\(.*?\)\s*\{)|(\(.*?\)\s*=>\s*\{))/g;
+    processedCode = processedCode.replace(funcRegex, (match) => `${match} _checkLoop();`);
+
+    strings.forEach((str, i) => {
+        processedCode = processedCode.replace(`__STR_${i}__`, str);
+    });
+
+    return helper + processedCode;
 },
 run() {
   const html = this.editors.html.getValue();
