@@ -347,24 +347,20 @@
 <!-- MOOD FLOW -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<!-- CODEPEN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.7/beautify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.7/beautify-css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.7/beautify-html.min.js"></script>
+
 
 <script>
     // Hàm chuyển đổi chức năng trong Tutorial
     function showTutSection(sectionId, event) {
-        // Ẩn tất cả section
         document.querySelectorAll('.tut-section').forEach(s => s.style.display = 'none');
-        // Hiện section được chọn
         document.getElementById(sectionId).style.display = 'block';
-        
-        // Xóa class active ở các nút
         document.querySelectorAll('.tut-nav-btn').forEach(b => b.classList.remove('active'));
-        // Thêm active cho nút hiện tại
         event.currentTarget.classList.add('active');
     }
-
-    // Đảm bảo hàm showModuleSettings hỗ trợ panel 'tutorial'
-    // Bạn cần kiểm tra trong file renderer.js xem hàm showModuleSettings đã xử lý chưa
-    // Nếu chưa, hãy bổ sung logic ẩn/hiện mod-settings-tutorial vào đó.
 </script>
     <script src="../renderer/moodFlow.js"></script>
     <script src="../renderer/renderer.js"></script>
