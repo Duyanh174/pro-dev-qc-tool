@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('electron');   //update
+const { ipcRenderer } = require('electron');  
 const sass = require('sass');
 const chokidar = require('chokidar');
 const path = require('path');
