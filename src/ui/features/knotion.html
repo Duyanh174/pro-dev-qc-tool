@@ -4,8 +4,8 @@
             <div class="section-label">SYSTEM</div>
             <div id="mf-sidebar-item" class="knot-item mood-trigger-item" onclick="Knotion.openMoodFlow()">
                 <span id="mood-notif-dot" class="red-dot" style="display:none"></span>
-                <span class="knot-icon">🧠</span>
-                <span class="knot-label">Mood in Pixel</span>
+                <span class="knot-icon"><i class="fa-regular fa-face-smile-beam"></i></span>
+                <span class="knot-label">Mood in Pixels</span>
             </div>
         </div>
 
@@ -21,7 +21,7 @@
         <div class="sidebar-section list-zone">
             <div class="section-label">
                 <span>PRIVATE</span>
-                <button class="add-btn" onclick="Knotion.createNote()" title="New Knot">+</button>
+                <button class="add-btn" onclick="Knotion.createNote()" title="New Knot"><i class="fa-solid fa-plus"></i></button>
             </div>
             <div id="knot-list" class="knot-items-container"></div>
         </div>
@@ -31,7 +31,7 @@
                 <span class="path-label">STORAGE PATH:</span>
                 <span id="current-path-display" class="path-value">...</span>
             </div>
-            <button class="change-path-btn">📂</button>
+            <button class="change-path-btn"><i class="fa-solid fa-folder-open"></i></button>
         </div>
     </aside>
 
@@ -58,7 +58,7 @@
                 <div class="empty-icon">🧠</div>
                 <h3>Your Knowledge Base</h3>
                 <p>Chọn một ghi chú hoặc tạo mới để bắt đầu thắt nút kiến thức.</p>
-                <button class="btn-create-prompt" onclick="Knotion.createNote()">+ Create New Knot</button>
+                <button class="btn-create-prompt" onclick="Knotion.createNote()">+ Create New Note</button>
             </div>
         </div>
     </main>

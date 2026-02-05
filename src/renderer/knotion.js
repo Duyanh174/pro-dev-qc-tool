@@ -267,10 +267,10 @@
 
             const itemHtml = (notes) => notes.map(n => `
                 <div class="knot-item ${this.activeNoteId === n.id ? 'active' : ''}" onclick="Knotion.loadNote('${n.id}')">
-                    <span class="knot-icon">📄</span>
+                    <span class="knot-icon"><i class="fa-solid fa-file fa-xs" style="color: #919191;"></i></span>
                     <span class="knot-name">${n.title || 'Untitled'}</span>
                     <div class="knot-actions">
-                        <button class="knot-pin ${n.isPinned ? 'active' : ''}" onclick="Knotion.togglePin('${n.id}', event)">📌</button>
+                        <button class="knot-pin ${n.isPinned ? 'active' : ''}" onclick="Knotion.togglePin('${n.id}', event)"><i class="fa-solid fa-thumbtack" style="color: #ff7070;"></i></button>
                         <button class="knot-del" onclick="Knotion.deleteNote('${n.id}', event)">×</button>
                     </div>
                 </div>

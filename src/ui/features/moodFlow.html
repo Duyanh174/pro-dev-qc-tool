@@ -2,9 +2,9 @@
     <header class="mf-header">
         <div class="mf-header-content" style="display: flex; gap: 15px; align-items: flex-end;">
             <div>
-                <h1>Mood Pixel</h1>
+                <h1>Mood in Pixels <i class="fa-solid fa-icons"></i></h1>
                 <div class="mf-birthday-card">
-                    <div class="bd-label">🎂 Nhập ngày sinh của bạn vào đây nhé:</div>
+                    <div class="bd-label"><i class="fa-solid fa-cake-candles"></i> Nhập ngày sinh của bạn vào đây nhé:</div>
                     <div class="mf-birthday-inputs">
                         <input type="text" id="bd-day" placeholder="DD" maxlength="2" oninput="MoodFlow.autoFocus(this, 'bd-month')">
                         <span>/</span>
@@ -17,7 +17,7 @@
             </div>
 
             <div class="mf-birthday-card" style="min-width: 150px;">
-                <div class="bd-label">🎨 Chọn bộ Icon:</div>
+                <div class="bd-label"><i class="fa-regular fa-hand-point-right"></i> Chọn bộ Icon:</div>
                 <div class="mf-birthday-inputs">
                     <select id="mf-theme-select" onchange="MoodFlow.changeTheme(this.value)" style="width: 100%; border: none; background: transparent; font-weight: 700; outline: none; cursor: pointer;">
                         <option value="dino">Khủng long (Dino)</option>

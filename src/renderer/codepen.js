@@ -471,7 +471,7 @@ verifyUnlock() {
             <div class="library-item" onclick="CodePenStorage.applySnippet('${item.id}')" style="border-left: 3px solid ${isLocal ? '#007acc' : '#28a745'}">
                 <img src="${thumbUrl}" class="snippet-thumb" style="width:80px; height:50px; object-fit:cover; border-radius:4px;">
                 <div class="library-item-info" style="flex:1; margin-left:10px;">
-                  <span style="font-weight:bold">${safeName} ${item.password ? '🔒' : ''}</span><br>
+                  <span style="font-weight:bold">${safeName} ${item.password ? '<i class="fa-solid fa-lock fa-2xs" style="color: #f48771;"></i>' : ''}</span><br>
                   <small class="author-tag" style="background:${isLocal ? '#007acc22' : '#28a74522'}"><i class="fa-solid fa-user"></i> ${safeAuthor}</small>
                   ${accessBadge}
                 </div>
@@ -495,8 +495,8 @@ verifyUnlock() {
         modal.innerHTML = `
             <div class="library-modal" style="width: 450px;">
                 <div class="library-tabs">
-                    <div class="lib-tab ${this.libraryTab === 'cloud' ? 'active' : ''}" onclick="CodePenStorage.libraryTab='cloud'; CodePenStorage.renderLibraryUI()">☁️ Cloud</div>
-                    <div class="lib-tab ${this.libraryTab === 'local' ? 'active' : ''}" onclick="CodePenStorage.libraryTab='local'; CodePenStorage.renderLibraryUI()"><i class="fa-solid fa-laptop-code" style="color: #74C0FC;"></i> Local</div>
+                    <div class="lib-tab ${this.libraryTab === 'cloud' ? 'active' : ''}" onclick="CodePenStorage.libraryTab='cloud'; CodePenStorage.renderLibraryUI()"><i class="fa-solid fa-cloud"></i> Cloud</div>
+                    <div class="lib-tab ${this.libraryTab === 'local' ? 'active' : ''}" onclick="CodePenStorage.libraryTab='local'; CodePenStorage.renderLibraryUI()"><i class="fa-solid fa-sitemap"></i> Local</div>
                 </div>
 
                 <div class="library-search-filter">
@@ -755,7 +755,7 @@ const CodePen = {
                 <button class="action-btn btn-secondary" onclick="clearCode()"><i class="fa-regular fa-trash-can"></i> Clear</button>
             </div>
             <div class="save-data-wrap">
-                <button class="action-btn btn-secondary" onclick="CodePenStorage.openSaveModal()">☁️ Save Cloud</button>
+                <button class="action-btn btn-secondary" onclick="CodePenStorage.openSaveModal()"><i class="fa-solid fa-cloud fa-sm"></i> Save Cloud</button>
                 <button class="action-btn btn-secondary" onclick="CodePenStorage.loadLibrary()"><i class="fa-solid fa-book"></i> Library</button>
             </div>`;
                     
@@ -766,7 +766,7 @@ const CodePen = {
                 <div class="editor-section-bg" id="editor-section">
                     <div id="lock-overlay">
                         <div class="lock-overlay-wrap">
-                          <button class="action-btn btn-primary" id="btn-unlock-ui" onclick="CodePenStorage.unlockSnippet()">🔓 Nhập mã để Sửa</button>
+                          <button class="action-btn btn-primary" id="btn-unlock-ui" onclick="CodePenStorage.unlockSnippet()"><i class="fa-solid fa-unlock"></i> Nhập mã để sửa</button>
                         </div>
                     </div>
                     <div class="editor-box" style="flex: 1;"><div class="editor-label"><span>HTML</span><button class="format-btn" onclick="CodePen.formatCode('html')">Format</button></div><div class="editor-content-wrapper"><div id="html-gutter" class="custom-line-numbers"></div><div id="html-code" class="ace-editor-container"></div></div></div>
@@ -832,12 +832,10 @@ const CodePen = {
             </div>`;
     }
 
-   // Gộp cả CDN Modal và Save Modal vào cùng một lần nhúng
-   // Gộp cả Auth Modal, Save Modal và CDN Modal vào cùng một lần nhúng
    container.insertAdjacentHTML('beforeend', `
         <div class="save-modal-overlay" id="cdn-modal-overlay" style="display:none;">
         <div class="save-modal" style="width: 400px; border-top: 4px solid #007acc;">
-            <h3 style="margin-top:0; color:#eee;">🌐 External Resources (CDN)</h3>
+            <h3 style="margin-top:0; color:#eee;"><i class="fa-solid fa-globe"></i> External Resources (CDN)</h3>
             <p style="font-size: 11px; color: #888; margin-bottom: 15px;">Thêm link CSS hoặc JS từ bên ngoài (Google Fonts, FontAwesome, v.v.)</p>
             
             <div style="margin-bottom: 15px;">
@@ -860,7 +858,7 @@ const CodePen = {
     </div>
     <div class="auth-modal-overlay" id="auth-modal-overlay">
         <div class="auth-modal">
-            <h4 style="margin:0 0 10px 0; color:#007acc;">🔒 Xác thực mật khẩu</h4>
+            <h4 style="margin:0 0 10px 0; color:#007acc;"><i class="fa-solid fa-user-shield"></i> Xác thực mật khẩu</h4>
             <small id="auth-msg" style="color:#888; display:block; margin-bottom:10px;"></small>
             <input type="password" id="auth-pass-input" placeholder="Nhập mật khẩu..." 
                    style="width:100%; padding:8px; background:#252526; border:1px solid #444; color:white; margin-bottom:15px; box-sizing:border-box;">
@@ -879,17 +877,17 @@ const CodePen = {
             <h3 id="modal-title" style="margin-top:0; margin-bottom:15px;">Asset Storage</h3>
             
             <div class="mode-switch-container">
-                <button id="mode-cloud-btn" class="mode-btn cloud active" onclick="CodePenStorage.switchStorageMode('cloud')">☁️ PUBLIC CLOUD</button>
-                <button id="mode-local-btn" class="mode-btn local" onclick="CodePenStorage.switchStorageMode('local')">💻 MY LOCAL</button>
+                <button id="mode-cloud-btn" class="mode-btn cloud active" onclick="CodePenStorage.switchStorageMode('cloud')"><i class="fa-solid fa-cloud"></i> PUBLIC CLOUD</button>
+                <button id="mode-local-btn" class="mode-btn local" onclick="CodePenStorage.switchStorageMode('local')"><i class="fa-solid fa-laptop-code"></i> MY LOCAL</button>
             </div>
 
             <div class="image-upload-section" style="border:1px dashed #444; padding:10px; margin-bottom:15px; text-align:center; border-radius:8px;">
                 <span style="display:block; font-size:10px; color:#888; margin-bottom:5px; font-weight:bold;">ẢNH ĐẠI DIỆN</span>
                 <img id="image-preview-element" style="width:100%; max-height:120px; object-fit:cover; display:none; border-radius:4px; margin-bottom:10px;">
                 <div style="display:flex; gap:10px; justify-content:center;">
-                    <button class="action-btn btn-capture" onclick="CodePenStorage.startCaptureMode()" style="font-size:11px;">📸 Capture</button>
+                    <button class="action-btn btn-capture" onclick="CodePenStorage.startCaptureMode()" style="font-size:11px;"><i class="fa-solid fa-camera"></i> Capture</button>
                     <input type="file" id="file-input" style="display:none" onchange="CodePenStorage.handleFileSelect(event)">
-                    <button class="action-btn" onclick="document.getElementById('file-input').click()" style="font-size:11px;">📁 Upload</button>
+                    <button class="action-btn" onclick="document.getElementById('file-input').click()" style="font-size:11px;"><i class="fa-solid fa-folder-open"></i> Upload</button>
                 </div>
             </div>
             
@@ -908,8 +906,8 @@ const CodePen = {
                 <div id="access-mode-section" style="margin-bottom:10px;">
                     <span style="display:block; font-size:10px; color:#ff9800; margin-bottom:4px; font-weight:bold;">CHẾ ĐỘ TRUY CẬP</span>
                     <select id="access-mode-input" style="width:100%; padding:10px; background:#252526; border:1px solid #444; color:white; border-radius:4px;">
-                        <option value="edit">✏️ Cho phép Sửa (Công khai)</option>
-                        <option value="view">👁️ Chỉ xem (Khóa Editor - Cần Pass)</option>
+                        <option value="edit"><i class="fa-solid fa-pen"></i> Cho phép Sửa (Công khai)</option>
+                        <option value="view"><i class="fa-solid fa-eye"></i> Chỉ xem (Khóa Editor - Cần Pass)</option>
                     </select>
                 </div>
                 <div id="password-section">
@@ -936,7 +934,7 @@ const CodePen = {
     </div>
     <div class="save-modal-overlay" id="unlock-modal-overlay" style="display:none;">
     <div class="save-modal" style="width: 300px; border-top: 4px solid #ff9800;">
-        <h4 style="margin:0 0 10px 0; color:#eee;">🔓 Mở khóa chỉnh sửa</h4>
+        <h4 style="margin:0 0 10px 0; color:#eee;"><i class="fa-solid fa-unlock fa-sm"></i> Mở khóa chỉnh sửa</h4>
         <p style="font-size: 11px; color: #aaa; margin-bottom: 15px;">Nhập mật khẩu của snippet này để mở quyền sửa.</p>
         
         <input type="password" id="unlock-pass-input" placeholder="Nhập mật khẩu..." 
