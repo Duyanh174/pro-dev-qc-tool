@@ -3,6 +3,17 @@ const path = require('path');
 const url = require('url');
 require('dotenv').config(); 
 
+const _segA = "Z2hwX2pxOUFuWWdldU1paWJB";
+const _segB = "dFFOWWNXSE5kR2hySmoy";
+const _segC = "VjFLcFhDdA==";
+const REMOTE_SWITCH_URL = "https://gist.githubusercontent.com/Duyanh174/16618cfde1400e2135ce3efb33727a66/raw/license.json";
+// Z2hwX2pxOUFuWWdldU1paWJBdFFOWWNXSE5kR2hySmoyVjFLcFhDdA==
+
+function _getGatekeeperKey() {
+    // Ghép các mảnh lại rồi mới giải mã
+    const fullSecret = _segA + _segB + _segC;
+    return Buffer.from(fullSecret, 'base64').toString('utf8');
+}
 // --- CƠ CHẾ DỰ PHÒNG KHI BUILD APP ---
 if (!process.env.SUPABASE_KEY) {
     console.log("⚠️ Không tìm thấy file .env, đang nạp Key dự phòng...");
@@ -12,6 +23,50 @@ if (!process.env.SUPABASE_KEY) {
     
     process.env.CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dpn8hugjc/image/upload";
     process.env.CLOUDINARY_PRESET = "codepen_preset";
+}
+
+// Luôn đảm bảo GITHUB_TOKEN tồn tại kể cả khi có .env hay không
+if (!process.env.GITHUB_TOKEN) {
+    process.env.GITHUB_TOKEN = _getGatekeeperKey();
+}
+
+async function validateGatekeeper() {
+    try {
+        console.log("🔍 Đang kiểm tra bản quyền...");
+
+        const tokenResponse = await fetch('https://api.github.com/user', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
+                'User-Agent': 'app_Datool_License'
+            }
+        });
+
+        if (!tokenResponse.ok) {
+            console.error("❌ Lớp 1 thất bại: Token không hợp lệ hoặc đã bị xoá.");
+            return { valid: false, msg: "Token bảo mật đã bị thu hồi." };
+        }
+
+      const switchResponse = await fetch(`${REMOTE_SWITCH_URL}?t=${Date.now()}`);
+        
+      if (!switchResponse.ok) {
+          return { valid: false, msg: "Không thể kết nối máy chủ xác thực." };
+      }
+
+      const license = await switchResponse.json();
+
+        if (license.status === "active") {
+            console.log("✅ Hệ thống hợp lệ. Chào mừng Duy Anh!");
+            return { valid: true };
+        } else {
+            console.error("❌ Lớp 2 thất bại: Ứng dụng đã bị khoá từ xa.");
+            return { valid: false, msg: license.message || "Ứng dụng này đã ngừng hỗ trợ." };
+        }
+
+    } catch (error) {
+        console.error("🌐 Lỗi mạng:", error.message);
+        return { valid: false, msg: "Vui lòng kết nối Internet để khởi động ứng dụng." };
+    }
 }
 // -------------------------------------
 // 1. Handler gọi Supabase
@@ -148,7 +203,20 @@ ipcMain.handle('select-folder', async () => {
     });
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+
+    // Chạy kiểm tra 2 lớp
+    const check = await validateGatekeeper();
+
+    if (!check.valid) {
+        dialog.showErrorBox(
+            "Thông báo hệ thống", 
+            check.msg // Hiện lỗi cụ thể: sai token, bị khoá, hoặc mất mạng
+        );
+        app.quit();
+        return;
+    }
+
     createWindow();
 
     // FIX LỖI 1: Phím tắt Control + Command + V
