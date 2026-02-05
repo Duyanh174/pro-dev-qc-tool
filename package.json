@@ -1,5 +1,5 @@
 {
-  "name": "pro-dev-qc-tool",
+  "name": "DA-tool-suite",
   "version": "1.0.0",
   "author": "Anh Bui",
   "description": "Professional Sass Compiler and QC Tool",
@@ -21,13 +21,11 @@
         "zip"
       ],
       "icon": "build/icon.icns",
-      "hardenedRuntime": true,
+      "hardenedRuntime": false,
       "gatekeeperAssess": false
     },
     "dmg": {
       "format": "UDZO",
-      "internetEnabled": true,
-      "title": "DevQCPro ${version}",
       "contents": [
         {
           "x": 410,
@@ -54,8 +52,11 @@
     "electron-builder": "latest"
   },
   "dependencies": {
+    "acorn": "^8.15.0",
+    "acorn-walk": "^8.3.4",
     "autoprefixer": "^10.4.23",
     "chokidar": "latest",
+    "dotenv": "^17.2.3",
     "monaco-editor": "^0.55.1",
     "postcss": "^8.5.6",
     "sass": "latest",

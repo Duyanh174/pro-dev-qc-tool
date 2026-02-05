@@ -13,46 +13,46 @@ window.FeedbackFlow = {
                 <div class="fb-ios-container">
                     <header class="fb-header">
                         <h1>Phản hồi & Góp ý</h1>
-                        <p>Mọi ý kiến của anh/chị đều giúp công cụ Dev-QC hoàn thiện hơn mỗi ngày.</p>
+                        <p>Mọi ý kiến của anh/chị đều giúp công cụ DA tool hoàn thiện hơn mỗi ngày.</p>
                     </header>
 
                     <div class="fb-card">
                         <div class="fb-group">
-                            <label>Cho em xin tên anh/chị nha</label>
+                            <label><i class="fa-solid fa-user fa-lg"></i> Cho em xin tên anh/chị nha</label>
                             <input type="text" id="fb-name" placeholder="Cho em xin tên anh/chị nha">
                         </div>
 
                         <div class="fb-group">
-                            <label>Điểm cần cải thiện</label>
+                            <label><i class="fa-solid fa-hand-point-up fa-lg"></i> Điểm cần cải thiện</label>
                             <textarea id="fb-improve" placeholder="Giao diện chưa mượt, compiler còn chậm..."></textarea>
                         </div>
 
                         <div class="fb-group">
-                            <label>Chức năng mong muốn (nếu có)</label>
+                            <label><i class="fa-solid fa-shuttle-space fa-rotate-270 fa-lg"></i> Chức năng mong muốn (nếu có)</label>
                             <textarea id="fb-feature" placeholder="Anh/chị có muốn thêm tính năng nào không ạ?"></textarea>
                         </div>
 
                         <div class="fb-group">
-                            <label>Đánh giá trải nghiệm</label>
+                            <label><i class="fa-solid fa-star-half-stroke fa-lg"></i> Đánh giá trải nghiệm</label>
                             <div class="fb-rating-wrapper">
                                 <div class="fb-rating">
-                                    <input type="radio" name="rating" value="5" id="r5"><label for="r5">⭐️</label>
-                                    <input type="radio" name="rating" value="4" id="r4"><label for="r4">⭐️</label>
-                                    <input type="radio" name="rating" value="3" id="r3"><label for="r3">⭐️</label>
-                                    <input type="radio" name="rating" value="2" id="r2"><label for="r2">⭐️</label>
-                                    <input type="radio" name="rating" value="1" id="r1"><label for="r1">⭐️</label>
+                                    <input type="radio" name="rating" value="5" id="r5"><label for="r5"><i class="fa-solid fa-star" style="color: #FFD43B;"></i></label>
+                                    <input type="radio" name="rating" value="4" id="r4"><label for="r4"><i class="fa-solid fa-star" style="color: #FFD43B;"></i></label>
+                                    <input type="radio" name="rating" value="3" id="r3"><label for="r3"><i class="fa-solid fa-star" style="color: #FFD43B;"></i></label>
+                                    <input type="radio" name="rating" value="2" id="r2"><label for="r2"><i class="fa-solid fa-star" style="color: #FFD43B;"></i></label>
+                                    <input type="radio" name="rating" value="1" id="r1"><label for="r1"><i class="fa-solid fa-star" style="color: #FFD43B;"></i></label>
                                 </div>
                                 <span class="rating-hint">Chọn sao để đánh giá</span>
                             </div>
                         </div>
 
                         <button class="fb-submit-btn" onclick="FeedbackFlow.submitForm()">
-                            Gửi Phản Hồi Ngay
+                            Gửi Phản Hồi Ngay <i class="fa-solid fa-paper-plane"></i>
                         </button>
                     </div>
 
                     <div class="fb-footer-tip">
-                        <span class="tip-icon">💡</span> 
+                        <span class="tip-icon"><i class="fa-regular fa-lightbulb" style="color: #FFD43B;"></i></span> 
                         <p>Mẹo: Bạn có thể nhấn <b>Ctrl + Cmd + V</b> để mở nhanh Clipboard khi đang viết feedback.</p>
                     </div>
                 </div>

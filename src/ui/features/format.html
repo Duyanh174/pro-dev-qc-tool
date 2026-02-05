@@ -5,29 +5,29 @@
             <select id="format-lang-select" class="format-select" onchange="FormatModule.updateAceMode(this.value)">
                 <optgroup label="Data">
                     <option value="json" selected>✨ Beauty JSON</option>
-                    <option value="json5">JSON5</option>
+                    <option value="json5">JSON</option>
                 </optgroup>
                 <optgroup label="Code">
-                    <option value="babel">JavaScript</option>
+                    <option value="babel"><i class="fa-brands fa-js"></i> JavaScript</option>
                     <option value="typescript">TypeScript</option>
-                    <option value="html">HTML</option>
-                    <option value="css">CSS / SCSS</option>
+                    <option value="html"><i class="fa-brands fa-html5"></i> HTML</option>
+                    <option value="css"><i class="fa-brands fa-css"></i> CSS / SCSS</option>
                 </optgroup>
             </select>
         </div>
 
         <div class="toolbar-group central-actions">
-            <button class="btn-action btn-primary" onclick="FormatModule.format()">🧹 Format</button>
+            <button class="btn-action btn-primary" onclick="FormatModule.format()"><i class="fa-solid fa-layer-group"></i> Format</button>
             <div class="btn-divider"></div>
-            <button class="btn-action btn-util" onclick="FormatModule.minify()">📦 Minify</button>
-            <button class="btn-action btn-util" onclick="FormatModule.sortJSON()">🔠 Sort Key</button>
-            <button class="btn-action btn-util" onclick="FormatModule.toCSV()">📊 To CSV</button>
-            <button class="btn-action btn-util" onclick="FormatModule.toPlaintext()">📝 To Text</button>
+            <button class="btn-action btn-util" onclick="FormatModule.minify()"><i class="fa-brands fa-dropbox"></i> Minify</button>
+            <button class="btn-action btn-util" onclick="FormatModule.sortJSON()"><i class="fa-solid fa-arrow-down-z-a"></i> Sort Key</button>
+            <button class="btn-action btn-util" onclick="FormatModule.toCSV()"><i class="fa-solid fa-table"></i> To CSV</button>
+            <button class="btn-action btn-util" onclick="FormatModule.toPlaintext()"><i class="fa-solid fa-font"></i> To Text</button>
         </div>
 
         <div class="toolbar-group">
-            <button class="btn-action btn-secondary" onclick="FormatModule.copy()">📋 Copy</button>
-            <button class="btn-action btn-danger" onclick="FormatModule.clear()">🗑 Clear</button>
+            <button class="btn-action btn-secondary" onclick="FormatModule.copy()"><i class="fa-solid fa-copy"></i> Copy</button>
+            <button class="btn-action btn-danger" onclick="FormatModule.clear()"><i class="fa-regular fa-trash-can"></i> Clear</button>
         </div>
     </header>
 
