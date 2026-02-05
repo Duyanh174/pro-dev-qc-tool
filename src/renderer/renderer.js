@@ -1,4 +1,4 @@
-// const { ipcRenderer } = require('electron');
+const { ipcRenderer } = require('electron');
 const sass = require('sass');
 const chokidar = require('chokidar');
 const path = require('path');
@@ -7,18 +7,6 @@ const WebSocket = require('ws');
 const postcss = require('postcss');
 const autoprefixer = require('autoprefixer');
 const { exec } = require('child_process');
-let ipcRenderer, clipboard;
-
-// Kiểm tra xem có đang chạy trong môi trường Electron không
-if (typeof require !== 'undefined') {
-    try {
-        const electron = require('electron');
-        ipcRenderer = electron.ipcRenderer;
-        clipboard = electron.clipboard;
-    } catch (e) {
-        console.warn("Đang chạy trên môi trường Web, không có Electron.");
-    }
-}
 
 const MAX_LOGS = 50;
 
