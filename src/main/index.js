@@ -1,13 +1,13 @@
 const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electron');
 const path = require('path');
 const url = require('url');
+require('./updater.js');
 require('dotenv').config(); 
 
-const _segA = "Z2hwX2pxOUFuWWdldU1paWJB";
-const _segB = "dFFOWWNXSE5kR2hySmoy";
-const _segC = "VjFLcFhDdA==";
+const _segA = "Z2hwX2k3WElwOG4xV1oz";
+const _segB = "TlM3Ump3aHlueU1";
+const _segC = "QYW52ZVZIMzFSUWFNag==";
 const REMOTE_SWITCH_URL = "https://gist.githubusercontent.com/Duyanh174/16618cfde1400e2135ce3efb33727a66/raw/license.json";
-// Z2hwX2pxOUFuWWdldU1paWJBdFFOWWNXSE5kR2hySmoyVjFLcFhDdA==
 
 function _getGatekeeperKey() {
     // Ghép các mảnh lại rồi mới giải mã
