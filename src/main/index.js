@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electron');
 const path = require('path');
 const url = require('url');
-require('./updater.js');
+// require('./updater.js');
 require('dotenv').config(); 
 
 const _segA = "Z2hwX2k3WElwOG4xV1oz";

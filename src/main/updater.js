@@ -70,40 +70,45 @@ ipcMain.handle('start-update', async (event, downloadUrl) => {
             writer.on('finish', () => {
                 // Giải nén
                 exec(`unzip -o "${zipPath}" -d "${tempDir}"`, (err) => {
-                    if (err) {
-                        process.noAsar = false;
-                        return resolve({ success: false, msg: "Lỗi giải nén ZIP." });
-                    }
-
+                    if (err) return resolve({ success: false, msg: "Lỗi giải nén ZIP." });
+                
                     const newAsarPath = findAsar(tempDir);
-                    if (!newAsarPath) {
-                        process.noAsar = false;
-                        return resolve({ success: false, msg: "Không tìm thấy file app.asar mới." });
-                    }
-
-                    // 2. Lệnh cài đặt đặc quyền cao
+                    if (!newAsarPath) return resolve({ success: false, msg: "Không tìm thấy app.asar mới." });
+                
+                    // Bọc đường dẫn cực kỳ kỹ lưỡng để tránh lỗi khoảng trắng
+                    const escapedAsar = `\\"${currentAsarPath}\\"`;
+                    const escapedBundle = `\\"${appBundlePath}\\"`;
+                    const escapedNewAsar = `\\"${newAsarPath}\\"`;
+                
                     const installCmd = [
-                        `cp -f "${newAsarPath}" "${currentAsarPath}"`,
-                        `xattr -cr "${appBundlePath}"`,
-                        `codesign --force --deep --sign - "${appBundlePath}"`
+                        `cp -f ${escapedNewAsar} ${escapedAsar}`,
+                        `xattr -cr ${escapedBundle}`,
+                        `codesign --force --deep --sign - ${escapedBundle}`
                     ].join(' && ');
-
-                    // 3. Kiểm tra xem có cần Sudo (Admin) không
+                
                     const needsSudo = appBundlePath.includes('/Applications');
+                    
+                    // Tạo script chạy qua osascript
                     const script = needsSudo 
                         ? `osascript -e 'do shell script "${installCmd}" with administrator privileges'`
                         : installCmd;
-
-                    const restartCmd = `sleep 1 && ${script} && open "${appBundlePath}"`;
-
-                    console.log("🛠 Đang thực thi lệnh cuối...");
-                    exec(restartCmd);
-
+                
+                    const restartCmd = `sleep 1 && ${script} && open ${escapedBundle}`;
+                
+                    exec(restartCmd, (error, stdout, stderr) => {
+                        if (error) {
+                            console.error("Shell Error:", stderr);
+                            // Lưu ý: Nếu user nhấn Cancel khi hỏi pass, nó sẽ vào đây
+                            return; 
+                        }
+                    });
+                
+                    // Vẫn trả về true để UI đóng app, nhưng lệnh trên sẽ chạy ngầm
                     setTimeout(() => {
                         process.noAsar = false;
                         app.quit();
                     }, 1000);
-
+                
                     resolve({ success: true, msg: "Đang cài đặt và khởi động lại..." });
                 });
             });
